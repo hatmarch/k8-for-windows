@@ -1,0 +1,54 @@
+= Kubernetes for Windows Developers Demo: Setup =
+:experimental:
+:imagesdir: docs/images
+:toc:
+:toclevels: 4
+
+== Installing Demo ==
+[IMPORTANT]
+====
+* Before running any script commands, make sure the run the following in the appropriate shell.  Note that the first parameter in this command will set the `PROJECT_PREFIX` environment variable which is referenced in many of the instructions.  If not provided, the default is `demo-dev`.
++
+----
+. scripts/shell-setup.sh 
+----
+====
+
+=== Setup Prerequisites ===
+
+. Setup your environment or shell variables as outlined <<Variables Used in This Demo,here>>
+. Run the following script to install the necessary operators to your cluster
++
+----
+$DEMO_HOME/scripts/install-prereq.sh
+----
+
+=== Main Demo Installation ===
+
+. Install the main part of the demo by running this command
++
+----
+$DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX 
+----
+
+== Appendix ==
+
+
+=== Missing Operator Catalogs ===
+
+If you cannot find the operators referenced then run the following on your cluster
+
+----
+oc apply -f "$DEMO_HOME/install/redhat-operators-csc.yaml" \
+  -f "$DEMO_HOME/install/community-operators-csc.yaml"
+
+oc -n openshift-marketplace get csc
+----
+
+A successful reconciliation should show an output like:
+
+----
+NAME                           STATUS      MESSAGE                                       AGE
+community-operators-packages   Succeeded   The object has been successfully reconciled   62s
+redhat-operators-packages      Succeeded   The object has been successfully reconciled   62s
+----
