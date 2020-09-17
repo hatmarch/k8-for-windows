@@ -1,0 +1,54 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "location": {
+            "value": "australiasoutheast"
+        },
+        "networkInterfaceName": {
+            "value": "ocp-win-vm455"
+        },
+        "backendPoolId": {
+            "value": "/subscriptions/c4c93e62-7bb2-433b-b820-d93e8a423aee/resourceGroups/cbrwin-lxc7n-rg/providers/Microsoft.Network/loadBalancers/cbrwin-lxc7n/backendAddressPools/cbrwin-lxc7n"
+        },
+        "subnetName": {
+            "value": "cbrwin-lxc7n-worker-subnet"
+        },
+        "virtualNetworkId": {
+            "value": "/subscriptions/c4c93e62-7bb2-433b-b820-d93e8a423aee/resourceGroups/cbrwin-lxc7n-rg/providers/Microsoft.Network/virtualNetworks/cbrwin-lxc7n-vnet"
+        },
+        "publicIpAddressName": {
+            "value": "ocp-win-vm-ip"
+        },
+        "publicIpAddressType": {
+            "value": "Static"
+        },
+        "publicIpAddressSku": {
+            "value": "Standard"
+        },
+        "virtualMachineName": {
+            "value": "ocp-win-vm"
+        },
+        "virtualMachineComputerName": {
+            "value": "ocp-win-vm"
+        },
+        "virtualMachineRG": {
+            "value": "cbrwin-lxc7n-rg"
+        },
+        "osDiskType": {
+            "value": "Premium_LRS"
+        },
+        "virtualMachineSize": {
+            "value": "Standard_D2s_v3"
+        },
+        "adminUsername": {
+            "value": "lab-admin"
+        },
+        "adminPassword": {
+            "value": null
+        },
+        "patchMode": {
+            "value": "AutomaticByOS"
+        }
+    }
+}

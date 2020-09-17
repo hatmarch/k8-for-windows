@@ -1,0 +1,11 @@
+.versalPolicy Allow 
+kubectl get nodes -o json I jq 1.items(1.spec.taints' kubect1 get nodes -o json I 19 '.items[l.specs kubectl expose deployment nginx-deployment --type=LoadBalancer --namemy-nginix 
+
+$url = "https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1" 
+$file = "$env:temp\ConfigureRemotingForAnsible.ps1" 
+(New-Object -TypeName System.Net.WebClient).DownloadFile($url, $file)
+powershell.exe -ExecutionPolicy ByPass -File $file 
+
+New-NetFirewallRule -DisplayName "Enable console logs" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 10250 -EdgeTraversalPolicy Allow
+
+ansible-playbook -i hosts windows-machine-config-bootstrapper/tools/ansible/tasks/wsu/main.yaml -v 
