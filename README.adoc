@@ -55,6 +55,26 @@ Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $PROJECT_PREFIX-vm
 ----
 
+=== Exposing a route to a specific port on the VM ===
+
+To expose traffic to a given port on a vm, you can do the following (after you ensure that Windows firewall has an inbound rule for that port)
+
+. Run the following command
+** *target-port* this is the port on the VM that you are trying to expose
+** *port* this is the port that the service listens on
++
+----
+virtctl expose vmi win-2019-vm --port=8080 --target-port=80 --name=iis-service
+----
++
+. Double check the service to make sure the pod selector is picking up the correct vm-launcher pod that represents the vm
++
+. Then expose the svc as you would normally to create a route
++
+----
+oc expose svc/iis-service
+----
+
 === Missing Operator Catalogs ===
 
 If you cannot find the operators referenced then run the following on your cluster
