@@ -57,7 +57,7 @@ spec:
         kubevirt.io/domain: win-2019
         kubevirt.io/size: large
         os.template.kubevirt.io/win2k19: 'true'
-        vm.kubevirt.io/name: win-2019
+        vm.kubevirt.io/name: win-2019-vm
         workload.template.kubevirt.io/server: 'true'
     spec:
       domain:
@@ -72,7 +72,7 @@ spec:
               tickPolicy: catchup
           utc: {}
         cpu:
-          cores: 2
+          cores: 4
           sockets: 1
           threads: 1
         devices:
@@ -107,7 +107,7 @@ spec:
           type: pc-q35-rhel8.2.0
         resources:
           requests:
-            memory: 2900Mi
+            memory: 6Gi
       evictionStrategy: LiveMigrate
       hostname: win-2019
       networks:

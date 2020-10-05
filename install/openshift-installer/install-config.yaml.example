@@ -1,3 +1,7 @@
+# FIXME: Cluster would work better with the following due to memory requirements
+# Masters: Standard_D2_v3
+# Workers: Standard_D4_v3
+
 apiVersion: v1
 baseDomain: azure.openshifttc.com
 compute:
