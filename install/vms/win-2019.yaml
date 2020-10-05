@@ -1,0 +1,126 @@
+apiVersion: kubevirt.io/v1alpha3
+kind: VirtualMachine
+metadata:
+  annotations:
+    kubevirt.io/latest-observed-api-version: v1alpha3
+    kubevirt.io/storage-observed-api-version: v1alpha3
+    name.os.template.kubevirt.io/win2k19: Microsoft Windows Server 2019
+  name: win-2019-vm
+  labels:
+    app: win-2019-vm
+    os.template.kubevirt.io/win2k19: 'true'
+    vm.kubevirt.io/template: windows-server-large-v0.11.3
+    vm.kubevirt.io/template.namespace: openshift
+    vm.kubevirt.io/template.revision: '1'
+    vm.kubevirt.io/template.version: v0.11.3
+    workload.template.kubevirt.io/server: 'true'
+spec:
+  dataVolumeTemplates:
+    - apiVersion: cdi.kubevirt.io/v1alpha1
+      kind: DataVolume
+      metadata:
+        creationTimestamp: null
+        name: win-2019-winhd
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 40Gi
+          storageClassName: managed-premium
+          volumeMode: Filesystem
+        source:
+          blank: {}
+    - apiVersion: cdi.kubevirt.io/v1alpha1
+      kind: DataVolume
+      metadata:
+        creationTimestamp: null
+        name: win-2019-iso
+      spec:
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: managed-premium
+          volumeMode: Filesystem
+        source:
+          http:
+            url: "https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso" # Or S3
+  running: true
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        kubevirt.io/domain: win-2019
+        kubevirt.io/size: large
+        os.template.kubevirt.io/win2k19: 'true'
+        vm.kubevirt.io/name: win-2019
+        workload.template.kubevirt.io/server: 'true'
+    spec:
+      domain:
+        clock:
+          timer:
+            hpet:
+              present: false
+            hyperv: {}
+            pit:
+              tickPolicy: delay
+            rtc:
+              tickPolicy: catchup
+          utc: {}
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - bootOrder: 1
+              cdrom:
+                bus: sata
+              name: iso
+            - disk:
+                bus: virtio
+              name: winhd
+            - cdrom:
+                bus: sata
+              name: windows-guest-tools
+          inputs:
+            - bus: usb
+              name: tablet
+              type: tablet
+          interfaces:
+            - masquerade: {}
+              model: virtio
+              name: nic-0
+        features:
+          acpi: {}
+          apic: {}
+          hyperv:
+            relaxed: {}
+            spinlocks:
+              spinlocks: 8191
+            vapic: {}
+        machine:
+          type: pc-q35-rhel8.2.0
+        resources:
+          requests:
+            memory: 2900Mi
+      evictionStrategy: LiveMigrate
+      hostname: win-2019
+      networks:
+        - name: nic-0
+          pod: {}
+      terminationGracePeriodSeconds: 3600
+      volumes:
+        - containerDisk:
+            image: registry.redhat.io/container-native-virtualization/virtio-win
+          name: windows-guest-tools
+        - dataVolume:
+            name: win-2019-iso
+          name: iso
+        - dataVolume:
+            name: win-2019-winhd
+          name: winhd

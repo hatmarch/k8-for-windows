@@ -71,6 +71,14 @@ main() {
         oc new-project $vm_prj
     }
 
+    echo "Creating Windows Virtual Machine"
+    oc apply -f $DEMO_HOME/install/vms/win-2019.yaml -n $vm_prj
+
+    # virtctl image-upload --image-path="https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso" \
+    #     --pvc-name iso-win2k19 \
+    #     --access-mode=ReadOnlyMany \
+    #     --uploadproxy-url https://cdi-uploadproxy-openshift-cnv.apps.cbrwin.azure.openshifttc.com/ \
+    #     --insecure
  
     # # Create the gogs server
     # echo "Creating gogs server in project $cicd_prj"
