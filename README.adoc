@@ -26,13 +26,34 @@ $DEMO_HOME/scripts/install-prereq.sh
 === Main Demo Installation ===
 
 . Install the main part of the demo by running this command
+** NOTE: `-p` is optional and `-i` installs prerequisites
 +
 ----
-$DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX 
+$DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX -i
 ----
 
 == Appendix ==
 
+=== Connecting to a Windows VM via RDP ===
+
+You can always connect to a Windows VM via the built-in VNC console.  However, if you want to connect externally via and RDP client here is one way this can be done.
+
+. Enable RDP on the Windows instance itself by following the steps in link:https://computingforgeeks.com/how-to-enable-remote-desktop-protocol-rdp-on-windows-server-2019/[this article]
+. Run the following commands in a PowerShell running as `Administrator`:
++
+----
+Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -name "fDenyT
+SConnections" -value 0
+
+Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+----
++
+. Create a loadbalancer service, as can be found link:install/vms/rdp-svc.yaml[here] by running this command
+** See also link:https://medium.com/cooking-with-azure/using-kubevirt-in-azure-kubernetes-service-part-3-windows-vm-363d6b653d7[this article] for more information about this
++
+----
+oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $PROJECT_PREFIX-vm
+----
 
 === Missing Operator Catalogs ===
 
