@@ -48,7 +48,7 @@ spec:
           volumeMode: Filesystem
         source:
           http:
-            url: "https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso" # Or S3
+            url: "https://mwh-demo-assets.s3-ap-southeast-2.amazonaws.com/win2019-server-eval.iso" # Or S3
   running: true
   template:
     metadata:
