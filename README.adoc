@@ -71,6 +71,26 @@ Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
 oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $PROJECT_PREFIX-vm
 ----
 
+=== Creating an image from a OpenShift Virtualization Windows VM ===
+
+. Set the virtual machine to stopped (in Kubernetes)
+. In the windows VM, run the following command:
+** See also link:https://devopspoints.com/windows-server-2019-enabling-quick-server-rollouts-with-sysprep.html[this article]
++
+----
+C:\Windows\System32\Sysprep\sysprep.exe
+----
++
+. You can configure from the UI like this:
+** OOBE
+** Generate
+** Shutdown
+. When the VM is done it will shutdown and when that happens, k8 should terminate the pod
+. Find the PVC that represents the disk that was just sysprepped
+. Configure the link:install/kube/tekton/taskrun/copy-img-run.yaml[Copy Image TaskRun] to fish the .img out of the PVC and upload to s3
+. You can now use that .img in a new virtual machine
+** NOTE: When the new virtual machine boots up, a couple initial things will need to be configured (like accounts and locale)
+
 === Exposing a route to a specific port on the VM ===
 
 To expose traffic to a given port on a vm, you can do the following (after you ensure that Windows firewall has an inbound rule for that port)
