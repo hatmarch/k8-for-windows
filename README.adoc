@@ -23,6 +23,22 @@
 $DEMO_HOME/scripts/install-prereq.sh
 ----
 
+==== Cluster Installation ====
+
+See also instructons link:https://docs.openshift.com/container-platform/4.5/installing/installing_azure/installing-azure-network-customizations.html[here] and link:https://github.com/openshift/cluster-network-operator#configuring-ovnkubernetes-on-a-hybrid-cluster[here]
+
+. Download the openshift installer for Azure
+. Use the link:install/openshift-installer/install-config.yaml[install-config.yaml] as a reference to create the cluster.  
+. Create Manifest files using the command
++
+----
+./openshift-install create manifests
+----
++
+. Copy the link:install/openshift-installer/cluster-network-03-config.yaml[cluster-network-03-config.yaml] into the `manifest` subdirectory
+** This configures the cluster network operator to allow hybrid networking so that linux and windows nodes can co-exist in the cluster
+. Continue with the installation process as normal
+
 === Main Demo Installation ===
 
 . Install the main part of the demo by running this command
@@ -75,21 +91,5 @@ virtctl expose vmi win-2019-vm --port=8080 --target-port=80 --name=iis-service
 oc expose svc/iis-service
 ----
 
-=== Missing Operator Catalogs ===
+=== Windows Machine Config Operator Build
 
-If you cannot find the operators referenced then run the following on your cluster
-
-----
-oc apply -f "$DEMO_HOME/install/redhat-operators-csc.yaml" \
-  -f "$DEMO_HOME/install/community-operators-csc.yaml"
-
-oc -n openshift-marketplace get csc
-----
-
-A successful reconciliation should show an output like:
-
-----
-NAME                           STATUS      MESSAGE                                       AGE
-community-operators-packages   Succeeded   The object has been successfully reconciled   62s
-redhat-operators-packages      Succeeded   The object has been successfully reconciled   62s
-----
