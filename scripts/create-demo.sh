@@ -4,6 +4,12 @@ set -Eeuo pipefail
 
 declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 declare PROJECT_PREFIX="k8-win"
+declare RESOURCE_GROUP="cbrwin-p8qst"
+declare REGION="australiasoutheast"
+declare ZONE="1"
+
+# The name of the key in the home/.ssh folder
+declare KEYNAME="windows-node.pem"
 
 display_usage() {
 cat << EOF
@@ -71,8 +77,19 @@ main() {
         oc new-project $vm_prj
     }
 
+    echo "Creating Network attachment (for allowing VM access to internet)"
+    oc apply -f $DEMO_HOME/install/vms/network-attachment-def.yaml
+
     echo "Creating Windows Virtual Machine"
     oc apply -f $DEMO_HOME/install/vms/win-2019.yaml -n $vm_prj
+
+    declare WMCO_PRJ="windows-machine-config-operator"
+    echo "installing the windows node"
+    # FIXME: INstall operator
+
+    oc create secret generic cloud-private-key --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
+
+    sed "s/<infrastructureID>/${RESOURCE_GROUP}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
 
     # virtctl image-upload --image-path="https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso" \
     #     --pvc-name iso-win2k19 \
