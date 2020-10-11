@@ -35,7 +35,34 @@ See also instructons link:https://docs.openshift.com/container-platform/4.5/inst
 ./openshift-install create manifests
 ----
 +
-. Copy the link:install/openshift-installer/cluster-network-03-config.yaml[cluster-network-03-config.yaml] into the `manifest` subdirectory
+NOTE: The following instructions come from link:https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#configuring-ovnkubernetes-on-a-hybrid-cluster[this site].  Check here for the latest information
++
+. Inside the `<cluster_directory>`, create a copy of the `manifests/cluster-network-02-config.yml` file as `manifests/cluster-network-03-config.yml`.
++
+----
+$ cp manifests/cluster-network-02-config.yml manifests/cluster-network-03-config.yml
+----
++
+. Edit the manifests/cluster-network-03-config.yml as per this `sed` expression:
++
+----
+$ sed -i 's/config.openshift.io\/v1/operator.openshift.io\/v1/g' manifests/cluster-network-03-config.yml
+----
++ 
+. Add the following to the spec: section of manifests/cluster-network-03-config.yml:
++
+----
+spec:
+  defaultNetwork:
+    type: OVNKubernetes
+    ovnKubernetesConfig:
+      hybridOverlayConfig:
+        hybridClusterNetwork:
+        - cidr: 10.132.0.0/14
+          hostPrefix: 23
+----
++
+. You will wind up with a file that looks something like (or exactly like) the link:install/openshift-installer/cluster-network-03-config.yml[cluster-network-03-config.yml] into the `manifest` subdirectory
 ** This configures the cluster network operator to allow hybrid networking so that linux and windows nodes can co-exist in the cluster
 . Continue with the installation process as normal
 
