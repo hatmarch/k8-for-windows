@@ -1,0 +1,134 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: redhat-operators-45
+  namespace: openshift-marketplace
+  labels:
+    opsrc-owner-name: redhat-operators-45
+    opsrc-owner-namespace: openshift-marketplace
+spec:
+  ports:
+    - name: grpc
+      protocol: TCP
+      port: 50051
+      targetPort: 50051
+  selector:
+    marketplace.operatorSource: redhat-operators-45
+  type: ClusterIP
+  sessionAffinity: None
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: redhat-operators-45
+  namespace: openshift-marketplace
+  labels:
+    opsrc-owner-name: redhat-operators-45
+    opsrc-owner-namespace: openshift-marketplace
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      marketplace.operatorSource: redhat-operators-45
+  template:
+    metadata:
+      name: redhat-operators-45
+      namespace: openshift-marketplace
+      creationTimestamp: null
+      labels:
+        marketplace.operatorSource: redhat-operators
+      annotations:
+        openshift-marketplace-update-hash: 163d3cbd0cc3cea5
+    spec:
+      volumes:
+        - name: marketplace-trusted-ca
+          configMap:
+            name: marketplace-trusted-ca
+            items:
+              - key: ca-bundle.crt
+                path: tls-ca-bundle.pem
+            defaultMode: 420
+      containers:
+        - resources:
+            requests:
+              cpu: 10m
+              memory: 100Mi
+          readinessProbe:
+            exec:
+              command:
+                - grpc_health_probe
+                - '-addr=localhost:50051'
+            initialDelaySeconds: 30
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          terminationMessagePath: /dev/termination-log
+          name: redhat-operators
+          command:
+            - appregistry-server
+            - '-r'
+            - 'https://quay.io/cnr|redhat-operators'
+            - '-o'
+            - >-
+              businessautomation-operator,3scale-operator,amq-broker,quay-bridge-operator,service-registry-operator,fuse-console,codeready-workspaces,openshifttemplateservicebroker,amq7-cert-manager,amq7-interconnect-operator,amq-online,clusterresourceoverride,cluster-logging,servicemeshoperator,serverless-operator,dv-operator,performance-addon-operator,cluster-kube-descheduler-operator,amq-broker-rhel8,aws-ebs-csi-driver-operator,openshiftansibleservicebroker,metering-ocp,eap,quay-operator,red-hat-camel-k,rhsso-operator,jaeger-product,kubevirt-hyperconverged,fuse-online,datagrid,local-storage-operator,advanced-cluster-management,mtc-operator,rh-service-binding-operator,amq-streams,ptp-operator,amq-broker-lts,container-security-operator,manila-csi-driver-operator,elasticsearch-operator,ocs-operator,apicast-operator,kiali-ossm,sriov-network-operator,nfd,openshift-pipelines-operator-rh,vertical-pod-autoscaler,cincinnati-operator,web-terminal,fuse-apicurito
+          livenessProbe:
+            exec:
+              command:
+                - grpc_health_probe
+                - '-addr=localhost:50051'
+            initialDelaySeconds: 30
+            timeoutSeconds: 1
+            periodSeconds: 10
+            successThreshold: 1
+            failureThreshold: 10
+          env:
+            - name: HTTP_PROXY
+            - name: HTTPS_PROXY
+            - name: NO_PROXY
+          ports:
+            - name: grpc
+              containerPort: 50051
+              protocol: TCP
+          imagePullPolicy: IfNotPresent
+          volumeMounts:
+            - name: marketplace-trusted-ca
+              mountPath: /etc/pki/ca-trust/extracted/pem/
+          terminationMessagePolicy: File
+          image: >-
+            quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:5ce20294878d9b665dadc19e2c717f940021c158806140cc11b050b1e79d33f9
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 30
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      securityContext: {}
+      schedulerName: default-scheduler
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  labels:
+    olm-visibility: hidden
+    openshift-marketplace: "true"
+    opsrc-datastore: "true"
+    opsrc-owner-name: redhat-operators-45
+    opsrc-owner-namespace: openshift-marketplace
+    opsrc-provider: redhat
+  name: redhat-operators
+  namespace: openshift-marketplace
+spec:
+  address: redhat-operators-45.openshift-marketplace.svc:50051
+  displayName: Red Hat Operators (4.5)
+  icon:
+    base64data: ""
+    mediatype: ""
+  publisher: Red Hat
+  sourceType: grpc
