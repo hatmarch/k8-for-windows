@@ -21,7 +21,7 @@ RUN --mount=type=secret,id=myuser --mount=type=secret,id=mypass \
 RUN dnf clean all && rm -r /var/cache/dnf  && dnf upgrade -y --allowerasing --nobest --skip-broken && \
     dnf update -y --allowerasing --nobest --skip-broken
 
-# for htpasswd support 
+# for htpasswd support
 # install skopeo, wget, and zsh
 RUN dnf install -y skopeo wget zsh jq iputils vi httpd-tools
 
@@ -65,6 +65,9 @@ RUN dnf install -y procps azure-cli
 RUN dnf install -y git
 
 RUN subscription-manager unregister
+
+# azcopy
+RUN curl -L https://aka.ms/downloadazcopy-v10-linux | tar -xvzf - --strip-components=1 -C /usr/local/bin/ *azcopy && chmod 755 /usr/local/bin/azcopy
 
 USER default
 
