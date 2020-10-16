@@ -27,6 +27,9 @@ $DEMO_HOME/scripts/install-prereq.sh
 
 See also instructons link:https://docs.openshift.com/container-platform/4.5/installing/installing_azure/installing-azure-network-customizations.html[here] and link:https://github.com/openshift/cluster-network-operator#configuring-ovnkubernetes-on-a-hybrid-cluster[here]
 
+link:https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#bring-up-the-openshift-cluster-with-ovn-kubernetes[these instructions] are specifically about setting up a cluster and OVN networking for a Hybrid Cluster and give some deeper information on these instructions.
+
+
 . Download the openshift installer for Azure
 . Use the link:install/openshift-installer/install-config.yaml[install-config.yaml] as a reference to create the cluster.  
 . Create Manifest files using the command
