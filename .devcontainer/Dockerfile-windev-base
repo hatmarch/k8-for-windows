@@ -12,6 +12,15 @@ USER root
 # like skopeo and eb cli prerequisites
 RUN dnf install -y subscription-manager
 
+ENV ACCEPT_EULA="y"
+
+# Install repo for azure cli
+RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc 
+COPY base-image-assets/azure-cli.repo /etc/yum.repos.d/azure-cli.repo
+
+# Install repo for SQL Server tools
+RUN curl https://packages.microsoft.com/config/rhel/8/prod.repo > /etc/yum.repos.d/msprod.repo
+
 # command line for this would look something like
 # DOCKER_BUILDKIT=1 docker build --progress=plain --secret id=myuser,src=../docker-secrets/myuser.txt --secret id=mypass,src=../docker-secrets/mypass.txt -f Dockerfile-windev-base -t quay.io/mhildenb/win-demo-base:1.0 .
 RUN --mount=type=secret,id=myuser --mount=type=secret,id=mypass \
@@ -19,11 +28,11 @@ RUN --mount=type=secret,id=myuser --mount=type=secret,id=mypass \
     --password=$(cat /run/secrets/mypass) --auto-attach
 
 RUN dnf clean all && rm -r /var/cache/dnf  && dnf upgrade -y --allowerasing --nobest --skip-broken && \
-    dnf update -y --allowerasing --nobest --skip-broken
-
+    dnf update -y --allowerasing --nobest --skip-broken && \
 # for htpasswd support 
 # install skopeo, wget, and zsh
-RUN dnf install -y skopeo wget zsh jq iputils vi httpd-tools
+    dnf install -y skopeo wget zsh jq iputils vi httpd-tools procps azure-cli git mssql-tools unixODBC-devel && \
+    dnf clean all && rm -r /var/cache/dnf
 
 # install stern
 RUN cd /usr/local/bin && \
@@ -55,14 +64,6 @@ RUN wget https://mirror.openshift.com/pub/openshift-v4/clients/helm/latest/helm-
 
 RUN wget https://storage.googleapis.com/kubernetes-release/release/$(curl -s https://storage.googleapis.com/kubernetes-release/release/stable.txt)/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl && \
     chmod 755 /usr/local/bin/kubectl
-
-# Install repo for azure cli
-RUN rpm --import https://packages.microsoft.com/keys/microsoft.asc 
-COPY base-image-assets/azure-cli.repo /etc/yum.repos.d/azure-cli.repo
-
-RUN dnf install -y procps azure-cli
-
-RUN dnf install -y git
 
 RUN subscription-manager unregister
 
