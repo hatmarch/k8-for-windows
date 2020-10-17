@@ -1,0 +1,64 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: hplus-sports
+  labels:
+    app: hplus-sports
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+    selector:
+      app: hplus-sports
+    sessionAffinity: None
+    type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: hplus-sports
+  name: hplus-sports
+spec:
+  selector:
+    matchLabels:
+      app: hplus-sports
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: hplus-sports
+      name: hplus-sports
+    spec:
+      tolerations:
+      - key: "os"
+        value: "Windows"
+        Effect: "NoSchedule"
+      containers:
+      - name: hplus-sports
+        image: quay.io/mhildenb/hplussports-win:1.8
+        imagePullPolicy: IfNotPresent
+        # FIXME: Attempt this with a configmap instead or configuration builder: https://www.codeproject.com/Articles/1216422/Modern-Configuration-for-ASP-NET-with-Configuratio
+        # env:
+        # - name: CONNSTR_HPlusSports
+        #   value: '"Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports;Integrated Security=False;User ID=sa;Password=yourStrong(!)Password;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False" providerName="System.Data.SqlClient"'
+        # - name: CONNSTR_HPlusSports_Identity
+        #   value: '"Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports_Identity;Integrated Security=False;User ID=sa;Password=yourStrong(!)Password;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False" providerName="System.Data.SqlClient"'
+      nodeSelector:
+        beta.kubernetes.io/os: windows
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  labels:
+    app: hplus-sports
+  name: hplus-sports
+spec:
+  port:
+    targetPort: 80
+  to:
+    kind: Service
+    name: hplus-sports
+    weight: 100
+  wildcardPolicy: None

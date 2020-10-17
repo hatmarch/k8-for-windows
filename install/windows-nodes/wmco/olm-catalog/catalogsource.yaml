@@ -1,0 +1,12 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: windows-machine-config-operator-ocs
+spec:
+  address: windows-machine-config-operator-registry-server.openshift-operator-lifecycle-manager.svc.cluster.local:50051
+  displayName: windows-machine-config-operator
+  icon:
+    base64data: ""
+    mediatype: ""
+  publisher: operator-sdk
+  sourceType: grpc

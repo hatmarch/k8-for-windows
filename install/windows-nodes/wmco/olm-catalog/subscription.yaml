@@ -1,0 +1,11 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: windows-machine-config-operator-v0-0-0-sub
+spec:
+  config:
+    resources: {}
+  name: windows-machine-config-operator
+  source: windows-machine-config-operator-ocs
+  sourceNamespace: windows-machine-config-operator
+  startingCSV: windows-machine-config-operator.v0.0.0

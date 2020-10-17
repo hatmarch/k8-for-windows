@@ -1,0 +1,7 @@
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: operator-sdk-og
+spec:
+  targetNamespaces:
+  - windows-machine-config-operator

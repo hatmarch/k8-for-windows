@@ -4,7 +4,7 @@ set -Eeuo pipefail
 
 declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 declare PROJECT_PREFIX="k8-win"
-declare RESOURCE_GROUP="cbrwin-p8qst"
+declare RESOURCE_GROUP="cbrwin-46-vx5dv"
 declare REGION="australiasoutheast"
 declare ZONE="1"
 
@@ -82,21 +82,17 @@ main() {
 
     echo "Creating Windows Virtual Machine"
     oc apply -f $DEMO_HOME/install/vms/win-2019.yaml -n $vm_prj
+    # NOTE: Virtual machine is created asychronously.  There is a reasonably long leadtime before the machine is actually ready (and also some manual setup work to do)
+
+    echo "Adding service to allow access to the VM via RDP"
+    oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $vm_prj
 
     declare WMCO_PRJ="windows-machine-config-operator"
     echo "installing the windows node"
-    # FIXME: INstall operator
-
-    oc create secret generic cloud-private-key --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
 
     sed "s/<infrastructureID>/${RESOURCE_GROUP}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
 
-    # virtctl image-upload --image-path="https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso" \
-    #     --pvc-name iso-win2k19 \
-    #     --access-mode=ReadOnlyMany \
-    #     --uploadproxy-url https://cdi-uploadproxy-openshift-cnv.apps.cbrwin.azure.openshifttc.com/ \
-    #     --insecure
- 
+
     # # Create the gogs server
     # echo "Creating gogs server in project $cicd_prj"
     # oc apply -f $DEMO_HOME/install/gogs/gogs.yaml -n $cicd_prj

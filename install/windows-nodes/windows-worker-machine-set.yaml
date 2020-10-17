@@ -3,21 +3,23 @@ kind: MachineSet
 metadata:
   labels:
     machine.openshift.io/cluster-api-cluster: <infrastructureID> 
-  name: <infrastructureID>-windows-worker-<zone>
+  # NOTE: Windows machine names can't be more than 15 characters long and the machine will be named for the machine set plus
+  # another 6 character guid
+  name: win-<zone>
   namespace: openshift-machine-api
 spec:
   replicas: 1
   selector:
     matchLabels:
       machine.openshift.io/cluster-api-cluster: <infrastructureID> 
-      machine.openshift.io/cluster-api-machineset: <infrastructureID>-windows-worker-<zone>
+      machine.openshift.io/cluster-api-machineset: ww-<zone>
   template:
     metadata:
       labels:
         machine.openshift.io/cluster-api-cluster: <infrastructureID> 
         machine.openshift.io/cluster-api-machine-role: worker
         machine.openshift.io/cluster-api-machine-type: worker
-        machine.openshift.io/cluster-api-machineset: <infrastructureID>-windows-worker-<zone>
+        machine.openshift.io/cluster-api-machineset: ww-<zone>
         machine.openshift.io/os-id: Windows
     spec:
       metadata:
