@@ -133,13 +133,16 @@ main()
     get_and_validate_options "$@"
 
     #
-    # Subscribe to Operators
+    # Subscribe to additional Catalogs
     #
-    SOURCE_FILES=( "redhat-operators.yaml" "redhat-marketplace.yaml" )
+    # redhat-operators-45 is the legacy operators provided with ocp-4.5.  Until pipelines operator is available in the 4.6
+    # redhat-operators stream, we need to use this
+    SOURCE_FILES=( "redhat-operators-45.yaml" )
     for SOURCE_FILE in ${SOURCE_FILES[@]}; do
-      CATALOG_SOURCE=$(oc apply -o name -f $DEMO_HOME/install/kube/catalog-source/${SOURCE_FILE})
+      OUTPUT=$(oc apply -o name -f $DEMO_HOME/install/kube/catalog-source/${SOURCE_FILE})
+      CATALOG_SOURCE=$(echo ${OUTPUT} | head -n 1)
       echo "Waiting for catalog source (${CATALOG_SOURCE}) to be ready"
-      while [[ "$(oc get ${CATALOG_SOURCE} -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null)" != "READY" ]]; do
+      while [[ "$(oc get ${CATALOG_SOURCE} -n openshift-marketplace -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null)" != "READY" ]]; do
         echo -n "."
         sleep 1
       done
@@ -156,10 +159,11 @@ metadata:
   name: openshift-pipelines-operator-rh
   namespace: openshift-operators
 spec:
-  channel: ocp-4.5
+  # NOTE: Only preview will work on ocp-4.6
+  channel: preview
   installPlanApproval: Automatic
   name: openshift-pipelines-operator-rh
-  source: redhat-operators
+  source: redhat-operators-45
   sourceNamespace: openshift-marketplace
 EOF
 
