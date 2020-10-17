@@ -1,3 +1,24 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  labels:
+    olm-visibility: hidden
+    openshift-marketplace: "true"
+    opsrc-datastore: "true"
+    opsrc-owner-name: redhat-operators-45
+    opsrc-owner-namespace: openshift-marketplace
+    opsrc-provider: redhat
+  name: redhat-operators-45
+  namespace: openshift-marketplace
+spec:
+  address: redhat-operators-45.openshift-marketplace.svc:50051
+  displayName: Red Hat Operators (4.5)
+  icon:
+    base64data: ""
+    mediatype: ""
+  publisher: Red Hat
+  sourceType: grpc
+---
 kind: Service
 apiVersion: v1
 metadata:
@@ -36,7 +57,7 @@ spec:
       namespace: openshift-marketplace
       creationTimestamp: null
       labels:
-        marketplace.operatorSource: redhat-operators
+        marketplace.operatorSource: redhat-operators-45
       annotations:
         openshift-marketplace-update-hash: 163d3cbd0cc3cea5
     spec:
@@ -111,24 +132,3 @@ spec:
       maxSurge: 25%
   revisionHistoryLimit: 10
   progressDeadlineSeconds: 600
----
-apiVersion: operators.coreos.com/v1alpha1
-kind: CatalogSource
-metadata:
-  labels:
-    olm-visibility: hidden
-    openshift-marketplace: "true"
-    opsrc-datastore: "true"
-    opsrc-owner-name: redhat-operators-45
-    opsrc-owner-namespace: openshift-marketplace
-    opsrc-provider: redhat
-  name: redhat-operators
-  namespace: openshift-marketplace
-spec:
-  address: redhat-operators-45.openshift-marketplace.svc:50051
-  displayName: Red Hat Operators (4.5)
-  icon:
-    base64data: ""
-    mediatype: ""
-  publisher: Red Hat
-  sourceType: grpc
