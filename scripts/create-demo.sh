@@ -76,9 +76,13 @@ main() {
     oc get ns $vm_prj 2>/dev/null  || { 
         oc new-project $vm_prj
     }
+    # this label is needed to allow windows nodes to run, per this article: 
+    # https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#deploying-in-a-namespace-other-than-default
+    oc label --overwrite namespace $vm_prj 'openshift.io/run-level'=1
 
-    echo "Creating Network attachment (for allowing VM access to internet)"
-    oc apply -f $DEMO_HOME/install/vms/network-attachment-def.yaml
+    # FIXME: Don't think this is needed
+    # echo "Creating Network attachment (for allowing VM access to internet)"
+    # oc apply -f $DEMO_HOME/install/vms/network-attachment-def.yaml
 
     echo "Creating Windows Virtual Machine"
     oc apply -f $DEMO_HOME/install/vms/win-2019.yaml -n $vm_prj
@@ -96,6 +100,13 @@ main() {
 
     sed "s/<infrastructureID>/${RESOURCE_GROUP}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
 
+
+    echo "Deploying Database"
+    oc create secret generic sql-secret --from-literal SA_PASSWORD='yourStrong(!)Password' -n $vm_prj
+    oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
+
+    echo "Deploying Windows Container"
+    oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
 
     # # Create the gogs server
     # echo "Creating gogs server in project $cicd_prj"
