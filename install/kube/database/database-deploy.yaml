@@ -51,6 +51,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
+  name: hplus-db
   labels:
     app: hplus-db
     app.kubernetes.io/component: hplus-db
