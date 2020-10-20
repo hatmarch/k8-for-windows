@@ -32,7 +32,7 @@ spec:
           volumeMode: Filesystem
         source:
           http:
-            url: "https://mwh-demo-assets.s3-ap-southeast-2.amazonaws.com/win-2019-sysprep.img"
+            url: "https://mwh-demo-assets.s3-ap-southeast-2.amazonaws.com/win-2019-sysprep-2.img"
     - apiVersion: cdi.kubevirt.io/v1alpha1
       kind: DataVolume
       metadata:
@@ -74,8 +74,8 @@ spec:
           utc: {}
         cpu:
           cores: 4
-          sockets: 1
-          threads: 1
+          sockets: 2
+          threads: 2
         devices:
           disks:
             - bootOrder: 1
