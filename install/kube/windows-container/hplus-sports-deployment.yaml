@@ -9,14 +9,16 @@ spec:
     - port: 80
       protocol: TCP
       targetPort: 80
-    selector:
-      app: hplus-sports
-    sessionAffinity: None
-    type: ClusterIP
+  selector:
+    app: hplus-sports
+  sessionAffinity: None
+  type: ClusterIP
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  annotations:
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"hplus-db"}]'
   labels:
     app: hplus-sports
   name: hplus-sports
