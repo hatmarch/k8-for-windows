@@ -87,6 +87,10 @@ main() {
     echo "Adding service to allow access to the VM via RDP"
     oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $vm_prj
 
+    echo "Opening up web ports on the VM"
+    virtctl virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
+    oc expose svc/vm-web -n $vm_prj
+
     declare WMCO_PRJ="windows-machine-config-operator"
     echo "installing the windows node"
 
