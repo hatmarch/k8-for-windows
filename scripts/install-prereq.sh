@@ -84,8 +84,11 @@ run_WMCO() {
 
   echo "Creating ssh secret for wmc operator"
   # FIXME: KEYNAME should be driven by incoming parameters
-  oc create secret generic cloud-private-key --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
-
+  secret_name="cloud-private-key"
+  oc get secret $secret_name 2>/dev/null || {
+    oc create secret generic $secret_name --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
+  }
+  
   # Run the operator in the windows-machine-config-operator namespace
   OSDK_WMCO_management run $OSDK $MANIFEST_LOC
 
@@ -140,7 +143,7 @@ main()
     SOURCE_FILES=( "redhat-operators-45.yaml" )
     for SOURCE_FILE in ${SOURCE_FILES[@]}; do
       OUTPUT=$(oc apply -o name -f $DEMO_HOME/install/kube/catalog-source/${SOURCE_FILE})
-      CATALOG_SOURCE=$(echo ${OUTPUT} | head -n 1)
+      CATALOG_SOURCE=$(echo "${OUTPUT}" | head -n 1)
       echo "Waiting for catalog source (${CATALOG_SOURCE}) to be ready"
       while [[ "$(oc get ${CATALOG_SOURCE} -n openshift-marketplace -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null)" != "READY" ]]; do
         echo -n "."
@@ -166,6 +169,39 @@ spec:
   source: redhat-operators-45
   sourceNamespace: openshift-marketplace
 EOF
+
+    #
+    # Install Serverless
+    #
+    echo "Installing the Serverless Operator"
+    serverless_operator_prj="openshift-serverless"
+    oc get ns $serverless_operator_prj 2>/dev/null  || { 
+        oc new-project $serverless_operator_prj
+    }
+
+    cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: serverless-operator
+  namespace: ${serverless_operator_prj}
+  labels:
+    operators.coreos.com/serverless-operator.openshift-serverless: ''
+spec:
+  channel: '4.6'
+  installPlanApproval: Automatic
+  name: serverless-operator
+  source: redhat-operators
+  sourceNamespace: openshift-marketplace
+  startingCSV: serverless-operator.v1.10.0
+EOF
+    echo "Waiting for the operator to install the Knative CRDs"
+    wait_for_crd "crd/knativeservings.operator.knative.dev"
+
+    oc apply -f "$DEMO_HOME/install/kube/serverless/cr.yaml"
+
+    echo "Waiting for the knative serving instance to finish installing"
+    oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeout=6m -n knative-serving
 
     #
     # Install virtualization
