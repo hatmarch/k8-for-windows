@@ -19,5 +19,10 @@ RUN curl -LO https://github.com/operator-framework/operator-sdk/releases/downloa
     chmod +x operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu && mkdir -p /usr/local/bin/ && \
     cp operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu /usr/local/bin/operator-sdk && rm operator-sdk-${OPERATOR_SDK_VERSION}-x86_64-linux-gnu
 
+# Add kamel functionality
+RUN wget -qO- https://github.com/apache/camel-k/releases/download/v1.2.0/camel-k-client-1.2.0-linux-64bit.tar.gz | tar -zxvf - -C /usr/local/bin ./kamel && \
+    chmod 755 /usr/local/bin/kamel
+
+RUN ln -s /usr/local/bin/kubectl /usr/bin/kubectl
 
 USER default

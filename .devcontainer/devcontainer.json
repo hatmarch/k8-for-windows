@@ -23,6 +23,7 @@
 	"extensions": [
 		"joaompinto.asciidoctor-vscode",
 		"humao.rest-client",
+		"redhat.vscode-camelk"
 	],
 	"settings":{
 		"terminal.integrated.shell.linux": "/bin/zsh",
