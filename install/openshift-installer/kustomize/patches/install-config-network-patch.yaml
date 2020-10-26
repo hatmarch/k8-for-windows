@@ -1,0 +1,8 @@
+apiVersion: v1
+baseDomain: azure.openshifttc.com
+kind: kustomization
+metadata:
+  name: cbrwin-ocp46
+networking:
+  # OVNKubernetes networking is critical for supporting windows node networking
+  networkType: OVNKubernetes
