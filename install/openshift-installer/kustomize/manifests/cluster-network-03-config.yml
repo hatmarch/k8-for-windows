@@ -1,0 +1,4 @@
+resources:
+    - installer-workspace/manifests/cluster-network-03-config.yml
+patchesStrategicMerge:
+    - patches/network-patch.yaml

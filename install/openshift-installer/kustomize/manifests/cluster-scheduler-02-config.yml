@@ -1,0 +1,4 @@
+resources:
+    - installer-workspace/manifests/cluster-scheduler-02-config.yml
+patchesStrategicMerge:
+    - patches/scheduler-patch.yaml   
