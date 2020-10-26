@@ -7,7 +7,18 @@ declare INSTALLER_VERSION="4.6.1"
 declare INSTALL_CONFIG="install-config.yaml"
 declare MANIFEST_DIR="manifests"
 
-cd $DEMO_HOME/install/openshift-installer/kustomize
+declare -r KUSTOMIZE_HOME="$DEMO_HOME/install/openshift-installer/kustomize"
+
+cleanup () {
+    echo "Cleaning up any remaining kustomization.yaml files"
+    rm "${KUSTOMIZE_HOME}/installer-workspace/tmp.yaml" || true
+    rm "${KUSTOMIZE_HOME}/kustomization.yaml" || true
+}
+
+# make sure not to leave files around in the source tree
+trap 'cleanup' EXIT SIGTERM SIGINT ERR
+
+cd "${KUSTOMIZE_HOME}"
 if [[ ! -d installer-workspace ]]; then
     echo "Creating installer workspace directory"
     # NOTE: This should be part of the gitignore
@@ -33,6 +44,17 @@ if [[ ! -f ${INSTALL_CONFIG} ]]; then
     exit 1
 fi
 
+# FIXME: Customize the install-config
+# prepare the install-config.yaml to be the target of a kustomization
+echo "kind: kustomization" >> install-config.yaml 
+
+# Run the customize from a level above as all the resources (including the patch files) must be lower than the current directory
+cd "${KUSTOMIZE_HOME}"
+cp "${KUSTOMIZE_HOME}/install-config-kustomization.yaml" kustomization.yaml
+oc kustomize . > installer-workspace/tmp.yaml
+sed "/^kind: kustomization.*$/d" installer-workspace/tmp.yaml > installer-workspace/install-config.yaml
+
+cd installer-workspace
 if [[  -d ${MANIFEST_DIR} ]]; then
     echo "WARNING: There is already manifest directory.  Skipping generation"
 else
