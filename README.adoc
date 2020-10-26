@@ -66,8 +66,29 @@ cd $DEMO_HOME/install/openshift-installer/kustomize/installer-workspace
 ./openshift-install create cluster --log-level=debug
 ----
 +
-. From there you can follow any remaining instructions that come with the `openshift-installer`
-
+. When the cluster is done being created you should see something like this (in between debug spew)
++
+----
+INFO Install complete!                            
+INFO To access the cluster as the system:admin user when using 'oc', run 'export KUBECONFIG=/opt/app-root/src/install/openshift-installer/kustomize/installer-workspace/auth/kubeconfig' 
+INFO Access the OpenShift web-console here: https://console-openshift-console.apps.cbrwin-ocp46.azure.openshifttc.com 
+INFO Login to the console with user: "kubeadmin", and password: "n4e4y-Zhq3k-MyBrZ-rwqq6" 
+----
++
+. Next log into  the cluster using the `export KUBECONFIG` for your newly created cluster
++
+. Run the following script to setup a 'lab-admin' user (passing in the password you want to use)
++
+----
+ADMIN_USER=<pick username>
+ADMIN_PASSWORD=<pick password>
+$DEMO_HOME/create-admin-user.sh $ADMIN_USER "$ADMIN_PASSWORD"
+----
+. If this complete successfully, when challenged to log into the cluser you should now be presented with two options for login:
++
+image:local-user-login.png[]
++
+. When you choose `Local Password` you should now be able to login with the `USER` and `PASSWORD` you provided and have cluster admin access
 
 === Setup Prerequisites ===
 
