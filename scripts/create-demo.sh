@@ -4,7 +4,6 @@ set -Eeuo pipefail
 
 declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 declare PROJECT_PREFIX="k8-win"
-declare RESOURCE_GROUP="cbrwin-46-vx5dv"
 declare REGION="australiasoutheast"
 declare ZONE="1"
 
@@ -95,10 +94,13 @@ main() {
     virtctl virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
     oc expose svc/vm-web -n $vm_prj
 
-    declare WMCO_PRJ="windows-machine-config-operator"
     echo "installing the windows node"
-
-    sed "s/<infrastructureID>/${RESOURCE_GROUP}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
+    declare INFRASTRUCTURE_ID=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster)
+    if [[ -z ${INFRASTRUCTURE_ID} ]]; then
+        echo "Could not find Infrastructure ID per instructions in the openshift-windows-machine-config-operator"
+        exit 1
+    fi 
+    sed "s/<infrastructureID>/${INFRASTRUCTURE_ID}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
 
 
     echo "Deploying Database"

@@ -5,7 +5,7 @@ set -Eeuo pipefail
 declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 declare PROJECT_PREFIX="k8-win"
 declare KEYNAME="windows-node"
-declare WMCO_PRJ="windows-machine-config-operator"
+declare WMCO_PRJ="openshift-windows-machine-config-operator"
 declare WMCO_OPERATOR_IMAGE="quay.io/mhildenb/wmco:1.0"
 
 display_usage() {
@@ -85,15 +85,15 @@ run_WMCO() {
   echo "Creating ssh secret for wmc operator"
   # FIXME: KEYNAME should be driven by incoming parameters
   secret_name="cloud-private-key"
-  oc get secret $secret_name 2>/dev/null || {
+  oc get secret $secret_name -n $WMCO_PRJ 2>/dev/null || {
     oc create secret generic $secret_name --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
   }
   
-  # Run the operator in the windows-machine-config-operator namespace
+  # Run the operator in the "${WMCO_PRJ}" namespace
   OSDK_WMCO_management run $OSDK $MANIFEST_LOC
 
   # Additional guard that ensures that operator was deployed given the SDK flakes in error reporting
-  if ! oc rollout status deployment windows-machine-config-operator -n windows-machine-config-operator --timeout=5s; then
+  if ! oc rollout status deployment windows-machine-config-operator -n "${WMCO_PRJ}" --timeout=5s; then
     return 1
   fi
 }
@@ -118,7 +118,7 @@ OSDK_WMCO_management() {
 
   # Currently this fails even on successes, adding this check to ignore the failure
   # https://github.com/operator-framework/operator-sdk/issues/2938
-  if ! $OSDK_PATH $COMMAND packagemanifests --olm-namespace openshift-operator-lifecycle-manager --operator-namespace windows-machine-config-operator \
+  if ! $OSDK_PATH $COMMAND packagemanifests --olm-namespace openshift-operator-lifecycle-manager --operator-namespace "${WMCO_PRJ}" \
   --operator-version 0.0.0 $INCLUDE; then
     echo operator-sdk $1 failed
   fi
