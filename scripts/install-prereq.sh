@@ -13,7 +13,8 @@ cat << EOF
 $0: Install k8 Windows Demo Prerequisites --
 
   Usage: ${0##*/} [ OPTIONS ]
-  
+
+    -o <IMAGE> [optional] Install custom built Windows Machine Config Operator
 
 EOF
 }
@@ -31,8 +32,9 @@ get_and_validate_options() {
 
   
   # parse options
-  while getopts ':h' option; do
+  while getopts ':ho:' option; do
       case "${option}" in
+          o  ) o_flag=true; WMCO_OPERATOR_IMAGE="${OPTARG}";;
 #          s  ) sup_prj="${OPTARG}";;
           h  ) display_usage; exit;;
           \? ) printf "%s\n\n" "  Invalid option: -${OPTARG}" >&2; display_usage >&2; exit 1;;
@@ -80,13 +82,6 @@ run_WMCO() {
 
   oc get ns $WMCO_PRJ 2>/dev/null  || { 
       oc new-project $WMCO_PRJ
-  }
-
-  echo "Creating ssh secret for wmc operator"
-  # FIXME: KEYNAME should be driven by incoming parameters
-  secret_name="cloud-private-key"
-  oc get secret $secret_name -n $WMCO_PRJ 2>/dev/null || {
-    oc create secret generic $secret_name --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
   }
   
   # Run the operator in the "${WMCO_PRJ}" namespace
@@ -136,6 +131,53 @@ main()
     get_and_validate_options "$@"
 
     #
+    echo "Installing Windows Machine Config Operator"
+    #
+
+    echo "Creating ssh secret for wmc operator"
+    # FIXME: KEYNAME should be driven by incoming parameters
+    secret_name="cloud-private-key"
+    oc get secret $secret_name -n $WMCO_PRJ 2>/dev/null || {
+      oc create secret generic $secret_name --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
+    }
+
+    if [ "${o_flag:-}" = true ]; then
+      echo "Installing custom WMCO (image: ${WMCO_OPERATOR_IMAGE})"
+
+      run_WMCO $(which operator-sdk)
+    else
+      echo "Subscribing to mainstream WMCO"
+
+      cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-windows-machine-config-operator-og
+  namespace: openshift-windows-machine-config-operator
+spec:
+  targetNamespaces:
+  - openshift-windows-machine-config-operator
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  labels:
+    operators.coreos.com/community-windows-machine-config-operator.openshift-windows-mac: ""
+  name: community-windows-machine-config-operator
+  namespace: openshift-windows-machine-config-operator
+spec:
+  channel: alpha
+  installPlanApproval: Automatic
+  name: community-windows-machine-config-operator
+  source: community-operators
+  sourceNamespace: openshift-marketplace
+EOF
+    fi
+
+    # Wait for rollout of operator to complete
+    oc rollout status deploy/windows-machine-config-operator -n $WMCO_PRJ
+
+    #
     # Subscribe to additional Catalogs
     #
     # redhat-operators-45 is the legacy operators provided with ocp-4.5.  Until pipelines operator is available in the 4.6
@@ -176,10 +218,17 @@ EOF
     echo "Installing the Serverless Operator"
     serverless_operator_prj="openshift-serverless"
     oc get ns $serverless_operator_prj 2>/dev/null  || { 
-        oc new-project $serverless_operator_prj
+        oc create namespace $serverless_operator_prj
     }
 
     cat <<EOF | oc apply -f -
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: openshift-serverless-og
+  namespace: openshift-serverless
+spec: {}
+---
 apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
@@ -196,7 +245,7 @@ spec:
   startingCSV: serverless-operator.v1.10.0
 EOF
     echo "Waiting for the operator to install the Knative CRDs"
-    wait_for_crd "crd/knativeservings.operator.knative.dev"
+    wait_for_crd "crd/knativeservings.operator.knative.dev" 
 
     oc apply -f "$DEMO_HOME/install/kube/serverless/cr.yaml"
 
@@ -209,9 +258,14 @@ EOF
     oc apply -f $DEMO_HOME/install/kube/ocp-virt/subscription.yaml
 
     # Ensure pipelines is installed
-    # wait_for_crd "crd/pipelines.tekton.dev"
+    wait_for_crd "crd/pipelines.tekton.dev"
 
-    echo "Waiting for virtualization operator installation"
+    echo -n "Waiting for virtualization operator installation"
+    while [[ -z "$(oc get deploy/hco-operator -n openshift-cnv 2>/dev/null)" ]]; do
+      echo -n "."
+      sleep 1
+    done
+    echo "."
     oc rollout status deploy/hco-operator -n openshift-cnv
 
     # Ensure we can create a CNV instance to start virtualization support
@@ -232,20 +286,6 @@ EOF
     oc wait --for=condition=Available hyperconvergeds/kubevirt-hyperconverged --timeout=6m -n openshift-cnv
 
     echo "Prerequisites installed successfully!"
-
-    echo "Creating Windows Machine Config Operator"
-    run_WMCO $(which operator-sdk)
-
-    # CATALOG_SOURCE=$(oc apply -o name -n $WMCO_PRJ -f $DEMO_HOME/install/windows-nodes/wmco/catalogsource.yaml)
-    # echo "waiting for catalog source to be ready"
-    # while [[ "$(oc get ${CATALOG_SOURCE} -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null)" != "READY" ]]; do
-    #   echo -n "."
-    #   sleep 1
-    # done
-    
-    # oc apply -n $WMCO_PRJ -f $DEMO_HOME/install/windows-nodes/wmco/operatorgroup.yaml
-
-    # oc apply -n $WMCO_PRJ -f $DEMO_HOME/install/windows-nodes/wmco/subscription.yaml
 
 }
 
