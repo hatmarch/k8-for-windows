@@ -90,10 +90,6 @@ main() {
     echo "Adding service to allow access to the VM via RDP"
     oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $vm_prj
 
-    echo "Opening up web ports on the VM"
-    virtctl virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
-    oc expose svc/vm-web -n $vm_prj
-
     echo "installing the windows node"
     declare INFRASTRUCTURE_ID=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster)
     if [[ -z ${INFRASTRUCTURE_ID} ]]; then
@@ -104,11 +100,15 @@ main() {
 
 
     echo "Deploying Database"
-    oc create secret generic sql-secret --from-literal SA_PASSWORD='yourStrong(!)Password' -n $vm_prj
+    oc get secret sql-secret -n $vm_prj 2>/dev/null || {
+        oc create secret generic sql-secret --from-literal SA_PASSWORD='yourStrong(!)Password' -n $vm_prj
+    }
     oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
 
     echo "Deploying Windows Container"
     oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
+
+
 
     # # Create the gogs server
     # echo "Creating gogs server in project $cicd_prj"
@@ -192,6 +192,18 @@ main() {
     # echo "updating all images"
     # # Fix up all image streams by pointing to pre-built images (which should trigger deployments)
     # $DEMO_HOME/scripts/image-stream-setup.sh
+
+    echo -n "Waiting for VM to start up"
+    while [[ -z "$(oc get vmi win-2019-vm -n $vm_prj 2>/dev/null)" ]]; do
+        echo -n "."
+        sleep 5
+    done
+    echo ".done!"
+    echo "Exposing web service on the virtual machine"
+    virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
+    oc expose svc/vm-web -n $vm_prj
+
+    echo "Demo installation completed successfully!"
 }
 
 main "$@"
