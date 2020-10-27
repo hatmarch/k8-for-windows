@@ -72,10 +72,11 @@ spec:
             rtc:
               tickPolicy: catchup
           utc: {}
-        cpu:
-          cores: 4
-          sockets: 2
-          threads: 2
+        # can't have cpu and request/limits
+        # cpu:
+        #   cores: 2
+        #   sockets: 1
+        #   threads: 1
         devices:
           disks:
             - bootOrder: 1
@@ -107,7 +108,11 @@ spec:
         machine:
           type: pc-q35-rhel8.2.0
         resources:
+          limits:
+            cpu: "2"
+            memory: 6Gi
           requests:
+            cpu: "2"
             memory: 6Gi
       evictionStrategy: LiveMigrate
       hostname: win-2019
