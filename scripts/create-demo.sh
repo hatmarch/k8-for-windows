@@ -105,6 +105,30 @@ main() {
     }
     oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
 
+    echo "Adding support for further configuring windows node"
+    oc get secret windows-node-private-key -n $vm_prj 2>/dev/null || {
+        oc create secret generic windows-node-private-key --from-file=windows-node=$HOME/.ssh/${KEYNAME}
+    }
+
+    oc get cm windows-scripts -n $vm_prj 2>/dev/null || {
+        oc create cm windows-scripts --from-file=$DEMO_HOME/install/windows-nodes/scripts
+    }
+ 
+    echo "Installing Tekton Tasks"
+    oc apply -R -f install/kube/tekton/tasks/
+
+    # FIXME: Need to wait for the windows node to come online
+
+     # There can be a race when the system is installing the pipeline operator in the $vm_prj
+    echo -n "Waiting for Pipelines Operator to be installed in $vm_prj..."
+    while [[ "$(oc get $(oc get csv -oname -n $vm_prj| grep pipelines) -o jsonpath='{.status.phase}' -n $vm_prj 2>/dev/null)" != "Succeeded" ]]; do
+        echo -n "."
+        sleep 1
+    done
+
+    echo "Updating pull timeout on the windows node"
+    tskr $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+
     echo "Deploying Windows Container"
     oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
 

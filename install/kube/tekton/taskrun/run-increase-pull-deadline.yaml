@@ -1,7 +1,7 @@
 apiVersion: tekton.dev/v1beta1
 kind: TaskRun
 metadata:
-  generateName: run-ps-cmd
+  generateName: run-increase-pull-deadline-
 spec:
   params:
     - name: SSH_KEY_NAME
