@@ -1,5 +1,1 @@
 
-[submodule "install/windows-nodes/windows-machine-config-bootstrapper"]
-	path = install/windows-nodes/windows-machine-config-bootstrapper
-	url = https://github.com/hatmarch/windows-machine-config-bootstrapper.git
-	branch = master
