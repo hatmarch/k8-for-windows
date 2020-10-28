@@ -73,6 +73,10 @@ echo "Setting up cluster network manifests"
 cp manifests/cluster-network-02-config.yml manifests/cluster-network-03-config.yml
 sed -i 's/config.openshift.io\/v1/operator.openshift.io\/v1/g' manifests/cluster-network-03-config.yml
 
+echo "Adding MachineConfig to enable nested virtualization"
+# Per instructions here: https://docs.openshift.com/container-platform/4.6/installing/install_config/installing-customizing.html#installation-special-config-kargs_installing-customizing
+cp $DEMO_HOME/install/openshift-installer/kustomize/99-openshift-machineconfig-worker-kargs.yaml openshift/
+
 # run through manifest specific patches
 $DEMO_HOME/scripts/patch-manifest.sh
 
