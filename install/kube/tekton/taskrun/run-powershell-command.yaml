@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: run-ps-cmd
+spec:
+  params:
+    - name: SSH_KEY_NAME
+      value: 'windows-node'
+    - name: TARGET_NODE_LABEL
+      value: 'beta.kubernetes.io/os=windows'
+    - name: SCRIPTS_CONFIG_MAP
+      value: "windows-scripts"
+    - name: SCRIPT_NAME
+      value: "image-pull-timeout.ps1"
+    - name: SSH_SECRET_NAME
+      value: 'windows-node-private-key'
+  taskRef:
+    name: powershell-cmd
