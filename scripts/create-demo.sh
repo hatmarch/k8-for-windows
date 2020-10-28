@@ -8,7 +8,7 @@ declare REGION="australiasoutheast"
 declare ZONE="1"
 
 # The name of the key in the home/.ssh folder
-declare KEYNAME="windows-node.pem"
+declare KEYNAME="windows-node"
 
 display_usage() {
 cat << EOF
@@ -107,34 +107,39 @@ main() {
     oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
 
     echo "Adding support for further configuring windows node"
-    oc get secret windows-node-private-key -n $vm_prj 2>/dev/null || {
-        oc create secret generic windows-node-private-key --from-file=windows-node=$HOME/.ssh/${KEYNAME}
+    oc get secret windows-node-private-key -n $sup_prj 2>/dev/null || {
+        oc create secret generic windows-node-private-key --from-file=windows-node=$HOME/.ssh/${KEYNAME} -n $sup_prj
     }
 
-    oc get cm windows-scripts -n $vm_prj 2>/dev/null || {
-        oc create cm windows-scripts --from-file=$DEMO_HOME/install/windows-nodes/scripts
+    oc get cm windows-scripts -n $sup_prj 2>/dev/null || {
+        oc create cm windows-scripts --from-file=$DEMO_HOME/install/windows-nodes/scripts -n $sup_prj
     }
  
     echo "Installing Tekton Tasks"
-    oc apply -R -f install/kube/tekton/tasks/
+    oc apply -R -f install/kube/tekton/tasks/ -n $sup_prj
 
     # FIXME: Need to wait for the windows node to come online
 
      # There can be a race when the system is installing the pipeline operator in the $vm_prj
-    echo -n "Waiting for Pipelines Operator to be installed in $vm_prj..."
-    while [[ "$(oc get $(oc get csv -oname -n $vm_prj| grep pipelines) -o jsonpath='{.status.phase}' -n $vm_prj 2>/dev/null)" != "Succeeded" ]]; do
+    echo -n "Waiting for Pipelines Operator to be installed in $sup_prj..."
+    while [[ "$(oc get $(oc get csv -oname -n $sup_prj| grep pipelines) -o jsonpath='{.status.phase}' -n $sup_prj 2>/dev/null)" != "Succeeded" ]]; do
         echo -n "."
         sleep 1
     done
+    echo "done."
+
+    # Give the pipeline account permissions to review nodes
+    oc adm policy add-cluster-role-to-user system:node-reader -z pipeline -n $sup_prj
 
     echo "Updating pull timeout on the windows node"
-    tskr $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+    oc create -f $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml -n $sup_prj
+    tkn tr logs -L -f -n $sup_prj
 
     echo "Deploying Windows Container"
     oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
 
-    info "Initiatlizing git repository in gitea and configuring webhooks"
-    oc apply -f $DEMO_HOME/kube/gitea/gitea-server-cr.yaml -n $sup_prj
+    echo "Initiatlizing git repository in gitea and configuring webhooks"
+    oc apply -f $DEMO_HOME/install/kube/gitea/gitea-server-cr.yaml -n $sup_prj
     oc wait --for=condition=Running Gitea/gitea-server -n $sup_prj --timeout=6m
     echo -n "Waiting for gitea deployment to appear..."
     while [[ -z "$(oc get deploy gitea -n $sup_prj 2>/dev/null)" ]]; do
@@ -144,7 +149,7 @@ main() {
     echo "done!"
     oc rollout status deploy/gitea -n $sup_prj
 
-    oc create -f $DEMO_HOME/kube/gitea/gitea-init-taskrun.yaml -n $sup_prj
+    oc create -f $DEMO_HOME/install/kube/gitea/gitea-init-taskrun.yaml -n $sup_prj
     # output the logs of the latest task
     tkn tr logs -L -f -n $sup_prj
 
@@ -230,7 +235,10 @@ main() {
     echo ".done!"
     echo "Exposing web service on the virtual machine"
     virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
-    oc expose svc/vm-web -n $vm_prj
+    oc get svc vm-web -n $vm_prj 2>/dev/null || {
+        oc expose svc/vm-web -n $vm_prj
+    }
+
 
     echo "Demo installation completed successfully!"
 }

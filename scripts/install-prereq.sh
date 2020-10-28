@@ -195,8 +195,8 @@ EOF
 
     declare giteaop_prj=gpte-operators
     echo "Installing gitea operator in ${giteaop_prj}"
-    oc apply -f $DEMO_HOME/kube/gitea/gitea-crd.yaml
-    oc apply -f $DEMO_HOME/kube/gitea/gitea-cluster-role.yaml
+    oc apply -f $DEMO_HOME/install/kube/gitea/gitea-crd.yaml
+    oc apply -f $DEMO_HOME/install/kube/gitea/gitea-cluster-role.yaml
     oc get ns $giteaop_prj 2>/dev/null  || { 
         oc new-project $giteaop_prj --display-name="GPTE Operators"
     }
@@ -207,6 +207,8 @@ EOF
     }
     oc adm policy add-cluster-role-to-user gitea-operator system:serviceaccount:$giteaop_prj:gitea-operator
 
+    # install the operator to the gitea project
+    oc apply -f $DEMO_HOME/install/kube/gitea/gitea-operator.yaml -n $giteaop_prj
 
     #
     # Install Pipelines (Tekton)
@@ -272,9 +274,6 @@ EOF
     #
     oc apply -f $DEMO_HOME/install/kube/ocp-virt/subscription.yaml
 
-    # Ensure pipelines is installed
-    wait_for_crd "crd/pipelines.tekton.dev"
-
     echo -n "Waiting for virtualization operator installation"
     while [[ -z "$(oc get deploy/hco-operator -n openshift-cnv 2>/dev/null)" ]]; do
       echo -n "."
@@ -299,6 +298,13 @@ EOF
 
     echo "Waiting for virtualization support to finish installation"
     oc wait --for=condition=Available hyperconvergeds/kubevirt-hyperconverged --timeout=6m -n openshift-cnv
+
+    # Ensure pipelines is installed
+    wait_for_crd "crd/pipelines.tekton.dev"
+
+    echo -n "Ensuring gitea operator has installed successfully..."
+    oc rollout status deploy/gitea-operator -n $giteaop_prj
+    echo "done."
 
     echo "Prerequisites installed successfully!"
 
