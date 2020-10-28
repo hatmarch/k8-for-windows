@@ -193,6 +193,21 @@ EOF
       done
     done
 
+    declare giteaop_prj=gpte-operators
+    echo "Installing gitea operator in ${giteaop_prj}"
+    oc apply -f $DEMO_HOME/kube/gitea/gitea-crd.yaml
+    oc apply -f $DEMO_HOME/kube/gitea/gitea-cluster-role.yaml
+    oc get ns $giteaop_prj 2>/dev/null  || { 
+        oc new-project $giteaop_prj --display-name="GPTE Operators"
+    }
+
+    # create the service account and give necessary permissions
+    oc get sa gitea-operator -n $giteaop_prj 2>/dev/null || {
+      oc create sa gitea-operator -n $giteaop_prj
+    }
+    oc adm policy add-cluster-role-to-user gitea-operator system:serviceaccount:$giteaop_prj:gitea-operator
+
+
     #
     # Install Pipelines (Tekton)
     #

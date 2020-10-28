@@ -79,9 +79,10 @@ main() {
     # https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#deploying-in-a-namespace-other-than-default
     oc label --overwrite namespace $vm_prj 'openshift.io/run-level'=1
 
-    # FIXME: Don't think this is needed
-    # echo "Creating Network attachment (for allowing VM access to internet)"
-    # oc apply -f $DEMO_HOME/install/vms/network-attachment-def.yaml
+    sup_prj="${PROJECT_PREFIX}-support"
+    oc get ns $sup_prj 2>/dev/null || {
+        oc new-project $sup_prj
+    }
 
     echo "Creating Windows Virtual Machine"
     oc apply -f $DEMO_HOME/install/vms/win-2019.yaml -n $vm_prj
@@ -132,16 +133,20 @@ main() {
     echo "Deploying Windows Container"
     oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
 
+    info "Initiatlizing git repository in gitea and configuring webhooks"
+    oc apply -f $DEMO_HOME/kube/gitea/gitea-server-cr.yaml -n $sup_prj
+    oc wait --for=condition=Running Gitea/gitea-server -n $sup_prj --timeout=6m
+    echo -n "Waiting for gitea deployment to appear..."
+    while [[ -z "$(oc get deploy gitea -n $sup_prj 2>/dev/null)" ]]; do
+        echo -n "."
+        sleep 1
+    done
+    echo "done!"
+    oc rollout status deploy/gitea -n $sup_prj
 
-
-    # # Create the gogs server
-    # echo "Creating gogs server in project $cicd_prj"
-    # oc apply -f $DEMO_HOME/install/gogs/gogs.yaml -n $cicd_prj
-    # GOGS_HOSTNAME=$(oc get route gogs -o template --template='{{.spec.host}}' -n $cicd_prj)
-    # echo "Initiatlizing git repository in Gogs and configuring webhooks"
-    # sed "s/@HOSTNAME/$GOGS_HOSTNAME/g" $DEMO_HOME/install/gogs/gogs-configmap.yaml | oc apply -f - -n $cicd_prj
- 
-
+    oc create -f $DEMO_HOME/kube/gitea/gitea-init-taskrun.yaml -n $sup_prj
+    # output the logs of the latest task
+    tkn tr logs -L -f -n $sup_prj
 
     # # 
     # # Install Tekton resources
