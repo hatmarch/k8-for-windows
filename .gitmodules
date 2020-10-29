@@ -1,1 +1,5 @@
 
+[submodule "k8-dotnet-code"]
+	path = k8-dotnet-code
+	url = https://github.com/hatmarch/k8-dotnet-code.git
+	branch = master
