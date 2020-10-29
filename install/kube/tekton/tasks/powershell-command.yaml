@@ -37,7 +37,7 @@ spec:
         exit 1
       fi
 
-      NODE_IP=$(oc get node/win-1-59j54 -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
+      NODE_IP=$(oc get ${NODE_NAME} -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}')
       echo "Attempting to remote to the node ${NODE_NAME} [${NODE_IP}] with user $(params.SSH_USER)..."
 
       cat /scripts-vol/$(params.SCRIPT_NAME) | ssh -oStrictHostKeyChecking=no -i $HOME/.ssh/$(params.SSH_KEY_NAME) $(params.SSH_USER)@${NODE_IP} powershell -Command -
