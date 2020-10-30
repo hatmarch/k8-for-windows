@@ -99,7 +99,6 @@ main() {
     fi 
     sed "s/<infrastructureID>/${INFRASTRUCTURE_ID}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
 
-
     echo "Deploying Database"
     oc get secret sql-secret -n $vm_prj 2>/dev/null || {
         oc create secret generic sql-secret --from-literal SA_PASSWORD='yourStrong(!)Password' -n $vm_prj
@@ -131,9 +130,8 @@ main() {
     # Give the pipeline account permissions to review nodes
     oc adm policy add-cluster-role-to-user system:node-reader -z pipeline -n $sup_prj
 
-    echo "Updating pull timeout on the windows node"
-    oc create -f $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml -n $sup_prj
-    tkn tr logs -L -f -n $sup_prj
+    # Create the ConfigMap for the windows container
+    oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n vm_prj
 
     echo "Deploying Windows Container"
     oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
@@ -151,6 +149,16 @@ main() {
 
     oc create -f $DEMO_HOME/install/kube/gitea/gitea-init-taskrun.yaml -n $sup_prj
     # output the logs of the latest task
+    tkn tr logs -L -f -n $sup_prj
+
+    echo -n "Waiting for windows node to come online..."
+    while [ -z "$(oc get node -l beta.kubernetes.io/os=windows 2>/dev/null)" ]; do
+        echo -n "."
+        sleep 3
+    done
+    echo "done."
+    echo "Updating pull timeout on the windows node"
+    oc create -f $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml -n $sup_prj
     tkn tr logs -L -f -n $sup_prj
 
     # # 
@@ -238,7 +246,9 @@ main() {
     oc get svc vm-web -n $vm_prj 2>/dev/null || {
         oc expose svc/vm-web -n $vm_prj
     }
-
+    # Annotate the route to have a longer timeout to allow for cold-startup slowness
+    sleep 2
+    oc annotate route/vm-web 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
 
     echo "Demo installation completed successfully!"
 }
