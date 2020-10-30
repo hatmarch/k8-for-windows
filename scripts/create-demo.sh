@@ -131,10 +131,10 @@ main() {
     oc adm policy add-cluster-role-to-user system:node-reader -z pipeline -n $sup_prj
 
     # Create the ConfigMap for the windows container
-    oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n vm_prj
+    oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n $vm_prj
 
-    echo "Deploying Windows Container"
-    oc apply -f $DEMO_HOME/install/kube/windows-container/hplus-sports-deployment.yaml -n $vm_prj
+    echo "Deploying Windows Container version of the site"
+    oc apply -f $DEMO_HOME/install/kube/windows-container/windows-container-deployment.yaml -n $vm_prj
 
     echo "Initiatlizing git repository in gitea and configuring webhooks"
     oc apply -f $DEMO_HOME/install/kube/gitea/gitea-server-cr.yaml -n $sup_prj

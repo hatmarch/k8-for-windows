@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: hplus-sports
+  name: windows-container
   labels:
     app: hplus-sports
 spec:
@@ -21,7 +21,7 @@ metadata:
     app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"hplus-db"}]'
   labels:
     app: hplus-sports
-  name: hplus-sports
+  name: windows-container
 spec:
   selector:
     matchLabels:
@@ -31,7 +31,7 @@ spec:
     metadata:
       labels:
         app: hplus-sports
-      name: hplus-sports
+      name: windows-container
     spec:
       tolerations:
       - key: "os"
@@ -39,28 +39,41 @@ spec:
         Effect: "NoSchedule"
       containers:
       - name: hplus-sports
-        image: quay.io/mhildenb/hplussports-win:1.8
-        imagePullPolicy: IfNotPresent
-        # FIXME: Attempt this with a configmap instead or configuration builder: https://www.codeproject.com/Articles/1216422/Modern-Configuration-for-ASP-NET-with-Configuratio
+        image: quay.io/mhildenb/hplussports-win:latest
+        imagePullPolicy: Always
+        volumeMounts:
+        - mountPath: "c:/var/run/web-config"
+          name: web-config
         # env:
+        # - name: "ConnectionStrings__HPlusSports"
+        #   value: 'Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports;Integrated Security=False; UID=sa; Password=yourStrong(!)Password;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False'
+        # - name: "ConnectionStrings__HPlusSports_Identity"
+        #   value: 'Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports_Identity;Integrated Security=False; UID=sa; Password=yourStrong(!)Password;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False'        # FIXME: Attempt this with a configmap instead or configuration builder: https://www.codeproject.com/Articles/1216422/Modern-Configuration-for-ASP-NET-with-Configuratio
+        # # env:
         # - name: CONNSTR_HPlusSports
         #   value: '"Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports;Integrated Security=False;User ID=sa;Password=yourStrong(!)Password;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False" providerName="System.Data.SqlClient"'
         # - name: CONNSTR_HPlusSports_Identity
         #   value: '"Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports_Identity;Integrated Security=False;User ID=sa;Password=yourStrong(!)Password;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False" providerName="System.Data.SqlClient"'
       nodeSelector:
         beta.kubernetes.io/os: windows
+      volumes: 
+      - name: web-config
+        configMap:
+          name: hplus-webconfig
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
+  annotations:
+    haproxy.router.openshift.io/timeout: 2m
   labels:
     app: hplus-sports
-  name: hplus-sports
+  name: windows-container
 spec:
   port:
     targetPort: 80
   to:
     kind: Service
-    name: hplus-sports
+    name: windows-container
     weight: 100
   wildcardPolicy: None
