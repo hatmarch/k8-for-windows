@@ -4,6 +4,11 @@
 :toc:
 :toclevels: 4
 
+This repo has submodules.  When cloning, be sure to use the following command to also pull down any linked submodules:
+----
+git clone --recurse-submodules https://github.com/hatmarch/k8-for-windows-devs
+----
+
 == Installing Demo ==
 [IMPORTANT]
 ====
