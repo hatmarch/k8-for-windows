@@ -5,7 +5,7 @@ metadata:
     machine.openshift.io/cluster-api-cluster: <infrastructureID> 
   # NOTE: Windows machine names can't be more than 15 characters long and the machine will be named for the machine set plus
   # another 6 character guid
-  name: win-<zone>
+  name: winnode-<zone>
   namespace: openshift-machine-api
 spec:
   replicas: 1
