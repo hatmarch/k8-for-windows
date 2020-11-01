@@ -1,19 +1,3 @@
-apiVersion: v1
-kind: Service
-metadata:
-  name: windows-container
-  labels:
-    app: hplus-sports
-spec:
-  ports:
-    - port: 80
-      protocol: TCP
-      targetPort: 80
-  selector:
-    app: hplus-sports
-  sessionAffinity: None
-  type: ClusterIP
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -61,10 +45,27 @@ spec:
         configMap:
           name: hplus-webconfig
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: windows-container
+  labels:
+    app: hplus-sports
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: hplus-sports
+  sessionAffinity: None
+  type: ClusterIP
+---
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
   annotations:
+    # keep openshift from giving up on the container due to cold starts
     haproxy.router.openshift.io/timeout: 2m
   labels:
     app: hplus-sports
