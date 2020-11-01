@@ -175,6 +175,11 @@ main() {
         sleep 5
     done
     echo ".done!"
+
+    echo "Exposing WebDeploy service"
+    oc get svc win-2019-webdeploy -n $vm_prj 2>/dev/null || {
+        oc apply -n $vm_prj -f $DEMO_HOME/install/vms/web-deploy-svc.yaml 
+    }
     oc get svc vm-web -n $vm_prj 2>/dev/null || {
         echo "Exposing web service on the virtual machine"
         virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
