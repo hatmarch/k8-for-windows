@@ -1,0 +1,40 @@
+= Developer Demo 
+:experimental:
+:imagesdir: images
+:toc:
+:toclevels: 4
+
+[IMPORTANT]
+.On necessary operators
+====
+See link:../README.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
+====
+
+== Components of this Walkthrough ==
+
+. Windows Workstation: This is the machine or VM that is used to edit the code and build the windows (and later dotnet core) containers
+. Windows Server: This is the VM running in OpenShift that is able to have the website deployed to it
+
+== Setup Tips Prior to Walkthrough ==
+
+* Have a Remote Desktop (RDP) session open to the Windows Workstation and the Windows Server
+* VSCode in the Desktop to the right of the main demo desktop
+* Setup your windows something like this:
++
+image:scaling-desktop-setup.png[]
++
+* For every shell referenced run the following commands
+.. Go to the root of the `k8-for-windows-devs` directory on your local machine
+. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
++
+----
+docker run -u root -it -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-base:latest /bin/zsh
+----
++
+. Once in the container run the following to setup environment
++
+----
+. scripts/shell-setup.sh
+----
+
+== DEMO: ==

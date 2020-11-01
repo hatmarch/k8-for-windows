@@ -12,7 +12,7 @@ git clone --recurse-submodules https://github.com/hatmarch/k8-for-windows-devs
 == Installing Demo ==
 [IMPORTANT]
 ====
-* Before running any script commands, make sure the run the following in the appropriate shell.  Note that the first parameter in this command will set the `PROJECT_PREFIX` environment variable which is referenced in many of the instructions.  If not provided, the default is `demo-dev`.
+* Before running any script commands, make sure the run the following in the appropriate shell.  Note that the first parameter in this command will set the `PROJECT_PREFIX` environment variable which is referenced in many of the instructions.  If not provided, the default is `k8-win`.
 +
 ----
 . scripts/shell-setup.sh 
