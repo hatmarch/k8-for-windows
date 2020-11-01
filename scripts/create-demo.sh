@@ -184,7 +184,7 @@ main() {
     } 
     # Annotate the route to have a longer timeout to allow for cold-startup slowness
     sleep 2
-    oc annotate route/vm-web 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
+    oc annotate --overwrite route/vm-web 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
 
 
     echo "Demo installation completed successfully!"
