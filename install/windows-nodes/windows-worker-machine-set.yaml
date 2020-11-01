@@ -3,6 +3,7 @@ kind: MachineSet
 metadata:
   labels:
     machine.openshift.io/cluster-api-cluster: <infrastructureID> 
+    demo-created: "true"
   # NOTE: Windows machine names can't be more than 15 characters long and the machine will be named for the machine set plus
   # another 6 character guid
   name: winnode-<zone>
@@ -21,7 +22,6 @@ spec:
         machine.openshift.io/cluster-api-machine-type: worker
         machine.openshift.io/cluster-api-machineset: ww-<zone>
         machine.openshift.io/os-id: Windows
-        demo-created: true
     spec:
       metadata:
         labels:
