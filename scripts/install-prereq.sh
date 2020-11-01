@@ -7,6 +7,7 @@ declare PROJECT_PREFIX="k8-win"
 declare KEYNAME="windows-node"
 declare WMCO_PRJ="openshift-windows-machine-config-operator"
 declare WMCO_OPERATOR_IMAGE="quay.io/mhildenb/wmco:1.0"
+declare sup_prj="k8-win-support"
 
 display_usage() {
 cat << EOF
@@ -14,7 +15,8 @@ $0: Install k8 Windows Demo Prerequisites --
 
   Usage: ${0##*/} [ OPTIONS ]
 
-    -o <IMAGE> [optional] Install custom built Windows Machine Config Operator
+    -o <IMAGE>        [optional] Install custom built Windows Machine Config Operator
+    -s <NAMESPACE>    [optional] Change the name of the support namespace (default: k8-win-support)
 
 EOF
 }
@@ -35,7 +37,7 @@ get_and_validate_options() {
   while getopts ':ho:' option; do
       case "${option}" in
           o  ) o_flag=true; WMCO_OPERATOR_IMAGE="${OPTARG}";;
-#          s  ) sup_prj="${OPTARG}";;
+          s  ) sup_prj="${OPTARG}";;
           h  ) display_usage; exit;;
           \? ) printf "%s\n\n" "  Invalid option: -${OPTARG}" >&2; display_usage >&2; exit 1;;
           :  ) printf "%s\n\n%s\n\n\n" "  Option -${OPTARG} requires an argument." >&2; display_usage >&2; exit 1;;
@@ -268,6 +270,16 @@ EOF
 
     echo "Waiting for the knative serving instance to finish installing"
     oc wait --for=condition=InstallSucceeded knativeserving/knative-serving --timeout=6m -n knative-serving
+
+    #
+    # Install Knative Eventing
+    #
+    echo "Waiting for the operator to install the Knative Event CRD"
+    wait_for_crd "crd/knativeeventings.operator.knative.dev"
+
+    oc apply -f "$DEMO_HOME/install/kube/serverless/knative-eventing.yaml" 
+    echo "Waiting for the knative eventing instance to finish installing"
+    oc wait --for=condition=InstallSucceeded knativeeventing/knative-eventing -n knative-eventing --timeout=6m
 
     #
     # Install virtualization

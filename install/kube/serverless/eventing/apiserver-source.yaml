@@ -1,0 +1,18 @@
+apiVersion: sources.knative.dev/v1alpha2
+kind: ApiServerSource
+metadata:
+  name: testevents
+spec:
+  serviceAccountName: events-sa
+  mode: Resource
+  resources:
+   - apiVersion: v1
+     kind: Node
+     selector:
+       matchLabels:
+        "beta.kubernetes.io/os": "windows"
+  sink:
+   ref:
+     apiVersion: v1
+     kind: Service
+     name: event-display
