@@ -175,14 +175,17 @@ main() {
         sleep 5
     done
     echo ".done!"
-    echo "Exposing web service on the virtual machine"
-    virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
     oc get svc vm-web -n $vm_prj 2>/dev/null || {
-        oc expose svc/vm-web -n $vm_prj
+        echo "Exposing web service on the virtual machine"
+        virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
     }
+    oc get route vm-web -n $vm_prj 2>/dev/null || {
+        oc expose svc/vm-web -n $vm_prj
+    } 
     # Annotate the route to have a longer timeout to allow for cold-startup slowness
     sleep 2
     oc annotate route/vm-web 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
+
 
     echo "Demo installation completed successfully!"
 }
