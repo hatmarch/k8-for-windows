@@ -28,7 +28,7 @@ image:scaling-desktop-setup.png[]
 . Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
 +
 ----
-docker run -u root -it -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-base:latest /bin/zsh
+docker run -u root -it -v ~/.kube:/opt/app-root/.kube -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-base:latest /bin/zsh
 ----
 +
 . Once in the container run the following to setup environment
