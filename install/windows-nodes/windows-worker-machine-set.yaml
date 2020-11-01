@@ -21,6 +21,7 @@ spec:
         machine.openshift.io/cluster-api-machine-type: worker
         machine.openshift.io/cluster-api-machineset: ww-<zone>
         machine.openshift.io/os-id: Windows
+        demo-created: true
     spec:
       metadata:
         labels:
