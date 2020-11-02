@@ -27,11 +27,16 @@ docker run -u root -it -v ~/.kube:/opt/app-root/.kube -v ~/.azure:/opt/app-root/
 +
 ----
 . scripts/shell-setup.sh
-sup_prj=k8-win-support
-vm_prj=k8-win-vm
 ----
 
+=== Hidden Shell
+
+. Open a shell that is offscreen from the demo that you will use to run background support commands
+. Configure this shell as written for <<Demo Shell, the demo shell>>
+
 === RDP: Windows Workstation
+
+NOTE: This is currently not virtualized is run on a physical windows 10 machine
 
 === RDP: Windows Server
 
@@ -50,6 +55,7 @@ image: vm-initial-screen.png[]
 . IIS Default Web Site (as hosted by VM)
 . OpenShift: Topology view of k8-win-vm
 . OpenShift: Admin > Installed Operators > Virtualization Operator of the `openshift-cnv` namespace
+. OpenShift: Admin > Compute > Machine Sets
 
 === VS Code
 
@@ -193,7 +199,7 @@ cd k8-win-code-repo\HSport
 docker build -t quay.io/mhildenb/hplussports-win:latest .
 ----
 +
-. Use kdb:[ctrl+t] to open `SvcWrapper.ps1` quickly
+. Use kbd:[ctrl+t] to open `SvcWrapper.ps1` quickly
 ** Explain what it does with web.configs
 +
 . Use kbd:[ctrl+t] to open `Web.config.local`
@@ -205,6 +211,7 @@ docker build -t quay.io/mhildenb/hplussports-win:latest .
 cp C:\Users\workstation-admin\source\repos\k8-win-code-repo\HSport\Website\Web.config.local c:\temp\Web.config
 ----
 +
+. *Pin* the Developer Terminal (so it will show whilst running)
 . Run the Dockerfile locally (from the developer terminal)
 +
 ----
@@ -217,29 +224,126 @@ docker run -it --rm -v c:\temp:c:\var\run\web-config -p 8080:80 quay.io/mhildenb
 Moving Web.config from configmap at c:\var\run\web-config\Web.config into C:\inetpub\wwwroot
 ----
 . Open chrome and open localhost:8080
-. Push to quay.io as latest
+. Point out the logs being piped from the IIS server in the container [red]#NOTE: Might take up to 30 seconds for them to appear#
+. Shut down the docker container (with kbd:[ctrl+c]) and then return to Chrome and show that the website is no longer accessible on port 8080
+. Push to quay.io as latest with the following command
 +
 ----
 docker push quay.io/mhildenb/hplussports-win:latest
 ----
 
 == Deploy Windows Container to OpenShift: Part 1
-1. Configuration MAP
-    1. Show the k8 config map
-    2. Use the following command to create the configmap from one of the config files
-oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n $vm_prja
-1. Deployment
-    1. Open the windows-container deployment.yaml and highlight key parts of it
-        1. Image
-        2. Volumes / Configmap
-        3. Service
-        4. Route
-    2. Run the command to deploy
-        1. Make sure developer view can be seen
-        2. Run this command in the shell
-oc apply -f install/kube/windows-container/windows-container-deployment.yaml -n $vm_prj
-            3. Examine the deployment
-                1. Notice that it can't be scheduled
-                2. Highlight the Tolerations
+
+. Just as we showed previously, we need to create a configmap that contains the proper configuration for this environment
+.. Open the Visual Studio window
+.. Use kbd:[cmd+p] to open web.config.k8 quickly
+.. Point out items below (and in image):
+*** `connectionString`
+*** `appSettings`
++
+image:relevant-configuration.png[]
++
+. From the VSCode terminal issue the following command to upload that configmap to the cluster
++
+----
+oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n $vm_prj
+----
+. Next show the deployment for the *windows container* we just built locally
+.. From the Developer Perspective, create new from catalog
++
+image:create-from-catalog.png[]
++
+.. Type `Windows` in the search bar and select the Windows Framework template
+.. Click instantiate template
+.. Fill in the template as follows
+*** Windows Container Image: `quay.io/mhildenb/hplussports-win:latest
+    required: true 
+  - name: WEBCONFIG_CM
+    displayName: Web.config Configuration Map Name
+    description: The name of the configuration map that includes the web.config that should be used for the windows framework
+#    value: hplus-webconfig
+    required: true
+  - name: APP_NAME
+    displayName: Application Name
+    description: Unique name for this deployment of the windows image
+#    value: hplus-sports
+    required: true  
+  - name: ROUTE_NAME
+    displayName: Route Name
+    description: The base name that should be used to create the URL to the container
+#    value: "windows-container"
++
+image:windows-container-template.png[]
++
+.. Click `Create`
+. Show the Windows Container appear in the Topology View
+. Take a look at the pod events and highlight that the container cannot be scheduled because *there is no node to run it*
 
 == Deploy Windows Container to OpenShift: Part 2: Machine API
+
+. Switch the Administrator View Browser tab
+. Select the Compute > Machine Sets and select the win machine set
+. Click on the YAML to highlight certain fields (first collapsing the `managedFields` stuff for readability)
++
+image:machine-set-highlights.png[]
++
+. Then click on Details Tab and click the edit button next to the machine count to change this to 1
++
+image:machine-set-count.png[]
++
+. Switch back to the `Developer Perspective` tab we were on before and watch until the pull request is complete
+** this will take some time 
+. [red]#In the background need to wait for the node to appear so that we can update the pull time#
+.. From the `Hidden Shell` run this command to watch for node events
++
+----
+stern event-display -n $sup_prj
+----
++
+.. When you see some events come through, then you can break out of the shell and run this command to increase pull times
++
+----
+oc project $sup_prj
+tskr install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+----
++
+.. You should see output like this:
++
+----
+[run-cmd] I1102 02:14:54.956734      17 request.go:621] Throttling request took 1.103709095s, request: GET:https://172.30.0.1:443/apis/migration.k8s.io/v1alpha1?timeout=32s
+[run-cmd] Attempting to remote to the node node/winnode-1-l6v86 [10.0.32.5] with user capi...
+[run-cmd] Failed to add the host to the list of known hosts (/tekton/home/.ssh/known_hosts).
+[run-cmd] True
+[run-cmd] The operation completed successfully.
+[run-cmd] 
+[run-cmd] Status   Name               DisplayName                           
+[run-cmd] ------   ----               -----------                           
+[run-cmd] Running  kubelet            kubelet                               
+[run-cmd] 
+[run-cmd] 
+----
+. Wait until the event view shows that the pull is complete (mention that windows containers are large)
++ 
+image:successful-pull.png[]
++
+. Go back to the Topology View and view the logs of the container
+. Click on the route tag on the container to open the container website
++
+image:container-site.png[]
++
+. Login with credentials used above to prove they are using the same DB
+** User: sam@shire.com
+** Pass: test123
+. Pick something to add to the cart:
++
+image:add-to-cart.png[]
+
+== Create a DotNet core WebAPI image service
+
+. Open the developer tools on the browser, and then refresh the cart page
+. Notice the call to get all the images for the active-wear category
++
+image:image-call.png[]
++
+. Explain that this will be the impetus behind the creation of a dotnet core WebAPI microsite to handle image lookups in our first step to strangle the monolith
+.
