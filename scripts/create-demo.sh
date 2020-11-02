@@ -122,6 +122,9 @@ main() {
     # Install (node) event monitoring (WIP)
     #
     # FIXME: the event-display should eventually be replaced with an appropriate trigger for the task: install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+    oc apply -f "$DEMO_HOME/install/kube/serverless/eventing/events-sa.yaml" -n $sup_prj
+    oc adm policy add-cluster-role-to-user event-watcher -z events-sa -n $sup_prj
+
     oc apply -f "$DEMO_HOME/install/kube/serverless/eventing/node-event-display.yaml" -n $sup_prj
     oc apply -f "$DEMO_HOME/install/kube/serverless/eventing/apiserver-source.yaml" -n $sup_prj
 
