@@ -148,6 +148,10 @@ main() {
     # echo "Deploying Windows Container version of the site"
     # oc apply -f $DEMO_HOME/install/kube/windows-container/windows-container-deployment.yaml -n $vm_prj
 
+    echo "Deploying template for creating a framework container"
+    # Deploy to openshift namespace to make available everywhere
+    oc apply -f $DEMO_HOME/install/kube/windows-container/windows-container-deployment-template.yaml -n openshift
+
     echo "Initiatlizing git repository in gitea and configuring webhooks"
     oc apply -f $DEMO_HOME/install/kube/gitea/gitea-server-cr.yaml -n $sup_prj
     oc wait --for=condition=Running Gitea/gitea-server -n $sup_prj --timeout=6m
