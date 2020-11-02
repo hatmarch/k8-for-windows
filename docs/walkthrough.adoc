@@ -51,6 +51,10 @@ image: vm-initial-screen.png[]
 . OpenShift: Topology view of k8-win-vm
 . OpenShift: Admin > Installed Operators > Virtualization Operator of the `openshift-cnv` namespace
 
+=== VS Code
+
+. To show some of the yaml files
+
 == DEMO: Intro to HPlusSport and Windows Development ==
 
 . In the shell run the follow command to get the url of the repo to clone
@@ -111,7 +115,10 @@ oc get svc win-2019-webdeploy -n $vm_prj -o jsonpath='{.status.loadBalancer.ingr
 + 
 image:iis-deploy.png[]
 +
-. Show the DBContext as mysterious local service address
+. Click on `Settings` and Show the DBContext as mysterious local service address
++
+image:svc-sql-connection.png[]
++
 . Close the Edit Profile window
 . Click `Publish`
 . Log into the machine when prompted
@@ -120,7 +127,7 @@ image:iis-deploy.png[]
 . Show the logs and then switch to Windows Server RDP Session
 . Continually hit kbd:[F5] to see the website appear
 . When deployment is done go back to the Chrome Tab with the IIS initial website and refresh
-. Changes should now be visible
+. Changes should now be visible, but you should get a database error
 
 == Intro to Virtualization
 
@@ -140,18 +147,21 @@ image:iis-deploy.png[]
 . Switch back to Topology View and click on VM again.  Point out the following in the side-bar
 ** Services
 ** Route
-. Point out the SQL Server instance
-** Mention it's in a container on RHEL
-** Notice the name of the SVC
-. Shutdown the database
-. Switch to Website tab and hit refresh
-** Should get an error
-. Start up database again in Topology view 
-** Got to the log tab of the underlying pod and wait for it to fully spin up, logs should get to this:
+. Add the SQL Server Database from a template
+.. Go to `Add`
+.. Select Templates
+.. Type `SQL Server`.  Template should appear
+.. Fill in the template as follows [orange]#referring back to the connection strings on the deployment# in terms of how the service is named
++
+image:mssql-template.png[]
++
+.. Click "Instantiate Template"
+. Once the template is created show the deployment being added and go to the *View Logs* of the pod under `Resources`
+. Wait until you see in the logs something like this:
 +
 image:sql-database-logs.png[]
 +
-. Refresh the website
+. Switch to Website tab and hit refresh
 . Register user
 ** User: sam@shire.com
 ** Pass: test123
@@ -231,3 +241,5 @@ oc apply -f install/kube/windows-container/windows-container-deployment.yaml -n 
             3. Examine the deployment
                 1. Notice that it can't be scheduled
                 2. Highlight the Tolerations
+
+== Deploy Windows Container to OpenShift: Part 2: Machine API

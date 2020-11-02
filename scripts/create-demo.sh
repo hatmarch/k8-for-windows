@@ -103,6 +103,10 @@ main() {
     oc get secret sql-secret -n $vm_prj 2>/dev/null || {
         oc create secret generic sql-secret --from-literal SA_PASSWORD='yourStrong(!)Password' -n $vm_prj
     }
+    # install this template to the openshift project so that it's available everywhere
+    oc apply -f $DEMO_HOME/install/kube/database/database-template.yaml -n openshift
+
+    # actually create the database (FIXME: Do this via the template)
     oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
 
     echo "Adding support for further configuring windows node"

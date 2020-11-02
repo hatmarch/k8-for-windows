@@ -5,6 +5,7 @@ metadata:
     kubevirt.io/latest-observed-api-version: v1alpha3
     kubevirt.io/storage-observed-api-version: v1alpha3
     name.os.template.kubevirt.io/win2k19: Microsoft Windows Server 2019
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"hplus-db"}]'
   name: win-2019-vm
   labels:
     app: win-2019-vm
