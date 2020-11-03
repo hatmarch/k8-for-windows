@@ -121,11 +121,11 @@ spec:
         - name: nic-0
           pod: {}
       terminationGracePeriodSeconds: 120
-      # tolerations:
-      # - key: "VM"
-      #   operator: "Equal"
-      #   value: "true"
-      #   effect: "NoSchedule"
+      tolerations:
+      - key: "VM"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
       volumes:
         - containerDisk:
             image: registry.redhat.io/container-native-virtualization/virtio-win

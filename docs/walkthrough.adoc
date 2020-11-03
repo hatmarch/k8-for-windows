@@ -59,7 +59,7 @@ oc get svc vmrdp -n $vm_prj -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
 +
 . Once in, open IIS Server Manager opened to default website
 +
-image: vm-initial-screen.png[]
+image:vm-initial-screen.png[]
 
 === Chrome Tabs
 
@@ -68,7 +68,7 @@ image: vm-initial-screen.png[]
 . OpenShift: Admin > Installed Operators > Virtualization Operator of the `openshift-cnv` namespace
 . OpenShift: Admin > Compute > Machine Sets
 . OpenShift: Gitea 
-** Open to this url `echo "https://$(oc get route gitea -n $sup_prj -o jsonpath='{ .spec.host }')/gogs/k8-win-demo-support"
+** Open to this url `echo "https://$(oc get route gitea -n $sup_prj -o jsonpath='{ .spec.host }')/gogs/k8-win-demo-support"`
 ** Logged in:
 *** user: gogs
 *** pass: gogs
@@ -99,7 +99,7 @@ image:framework-properties.png[]
 +
 . Show the nuget packages but opening `Tools > NuGet Package Manager > Manage NuGet Packages for Solution...`
 +
-image: nuget.png[]
+image:nuget.png[]
 +
 . Show the MVC components of the website by clicking on files in the navbar such as:
 ** `Features\Home\HomeController.cs`: Typical MVC app
@@ -127,6 +127,7 @@ echo "http://$(oc get route vm-web -n $vm_prj -o jsonpath='{.spec.host}')/"
 image:iis-default.png[]
 +
 . Find the IP address of the WebDeploy service by running this command and copying the output
+** NOTE: You might consider assigning this IP address to an `A` Record in Azure DNS
 +
 ----
 oc get svc win-2019-webdeploy -n $vm_prj -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
@@ -272,7 +273,7 @@ image:create-from-catalog.png[]
 .. Type `Windows` in the search bar and select the Windows Framework template
 .. Click instantiate template
 .. Fill in the template as follows:
-*** Windows Container Image: `quay.io/mhildenb/hplussports-win:latest
+*** Windows Container Image: `quay.io/mhildenb/hplussports-win:latest`
 *** Web.config Configuration Map Name: `hplus-webconfig`
 *** Application Name: `hplus-sports`
 *** Route Name: `windows-container`
