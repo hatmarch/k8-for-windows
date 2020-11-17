@@ -22,12 +22,6 @@ The following sections review the different windows and potential setup necessar
 ----
 docker run -u root -it -v ~/.kube:/opt/app-root/.kube -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-shell:latest /bin/zsh
 ----
-+
-. Once in the container run the following to setup environment
-+
-----
-. scripts/shell-setup.sh
-----
 
 === Hidden Shell
 

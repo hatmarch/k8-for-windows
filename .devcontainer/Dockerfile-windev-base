@@ -71,5 +71,5 @@ USER default
 
 # install and configure ohmyzsh for `default` user
 RUN wget https://github.com/robbyrussell/oh-my-zsh/raw/master/tools/install.sh -O - | zsh
-COPY base-image-assets/.zshrc.example ~/.zshrc
+COPY base-image-assets/.zshrc.example $HOME/.zshrc
 
