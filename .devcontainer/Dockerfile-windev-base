@@ -39,7 +39,7 @@ RUN cd /usr/local/bin && \
     wget https://github.com/wercker/stern/releases/download/1.11.0/stern_linux_amd64 -O /usr/local/bin/stern && \
     chmod 755 /usr/local/bin/stern && \
 # instal knative client
-    wget -qO- https://mirror.openshift.com/pub/openshift-v4/clients/serverless/0.14.0/kn-linux-amd64-0.14.0.tar.gz | tar -zxvf - -C /usr/local/bin ./kn && chmod 755 /usr/local/bin/kn && \
+    wget -qO- https://mirror.openshift.com/pub/openshift-v4/clients/serverless/0.17.3/kn-linux-amd64-0.17.3.tar.gz | tar -zxvf - -C /usr/local/bin ./kn && chmod 755 /usr/local/bin/kn && \
 # NOTE: instead of hey which might be discontinued, use ApacheBench (ab) which is downloaded as part of 
 # httpd-tools.  See https://stackoverflow.com/questions/4314827/is-there-any-link-to-download-ab-apache-benchmark
 # install istioctl
