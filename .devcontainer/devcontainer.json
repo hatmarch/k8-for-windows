@@ -14,8 +14,7 @@
 		"-v", "${env:HOME}/.ssh:/opt/app-root/.ssh",
 		"-e", "AWS_PROFILE=redhat",
 		"-e", "REGION=ap-southeast-2",
-		"-e",  "DEMO_HOME=/workspaces/k8-for-windows-devs",
-		"-e", "AZ_RESOURCE_GROUP=${env:AZ_RESOURCE_GROUP}"
+		"-e", "AZ_RESOURCE_GROUP=${localEnv:AZ_RESOURCE_GROUP}"
 		//"AWS_PROFILE=${env:AWS_PROFILE}"
 	],
 	// open these ports for port-forwarding to host during demo
