@@ -113,6 +113,38 @@ docker run -u root -it -v ~/.kube:/opt/app-root/.kube -v ~/.azure:/opt/app-root/
 $DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX -i
 ----
 
+=== AWS Considerations (and RHPDS Clusters) ===
+
+Clusters created with RHPDS (or AWS Clusters) need special consideration to allow kubevirt to work properly.  The reason is that unlike Azure, AWS does not enable nested virtualization on any of their VMs
+
+The only way to get run an OpenShift Virtualization VM on an AWS cluster is to add a node to the cluster that is part of the "metal" series of instances for AWS.  Otherwise the VM will remain in the `pending` state due to it being "unschedulable" (no nodes with kvm virtualization support) 
+
+At the time of this writing, the cheapest metal instance the the MachineAPI supports is the `c5.metal` instance.  Here are the instances that are known to support virtualizationfootnote:[You can find a list of instances and costs link:https://aws.amazon.com/ec2/pricing/on-demand/[here].  Be sure to select the correct region when consulting that table.  Metal instances are not called out separately; find them by search for "metal" in the page]
+
+|===
+|Instance Type |Hourly Rate (ap-southeast-1)
+
+|c5.metal
+|$4.0704
+
+|m5.metal
+|$5.76
+
+|===
+
+WARNING: Metal instances are signficantly more expensive (and have greater capacity) than normal EC2 instances.  Consider eliminating as many other workers in the cluster when adding a metal MachineSet to keep costs down.
+
+To add support for the VM follow these steps:
+
+. Ensure that the `MachineConfig` (which would have been applied if you created your own <<Custom Cluster Creation,custom cluster>>) is addedfootnote:[Given that the installation is happening on bare metal instances, it's not clear these kernelArguments, which have to do with nested virtualization, are actually necessary]:
++
+----
+oc apply -f $DEMO_HOME/install/openshift-installer/kustomize/99-openshift-machineconfig-worker-kargs.yaml
+----
++
+. The easiest way to add the MachineSet to the cluster is to patch an existing MachineSet and change the `spec.providerSpec.value.instanceType` to one of the valid metal instances listed above
+
+
 == Appendix ==
 
 === Creating a new shell container
