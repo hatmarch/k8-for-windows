@@ -27,7 +27,7 @@
 	],
 	"settings":{
 		"terminal.integrated.shell.linux": "/bin/zsh",
-		"workbench.colorTheme": "Visual Studio Dark",
+		"workbench.colorTheme": "Tomorrow Night Blue",
 		"http.proxyStrictSSL": false,
 		"workbench.tips.enabled": false,
 		"vs-kubernetes": { 
