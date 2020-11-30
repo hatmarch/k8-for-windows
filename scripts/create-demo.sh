@@ -91,13 +91,17 @@ main() {
     echo "Adding service to allow access to the VM via RDP"
     oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $vm_prj
 
-    echo "installing the windows node"
-    declare INFRASTRUCTURE_ID=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster)
-    if [[ -z ${INFRASTRUCTURE_ID} ]]; then
-        echo "Could not find Infrastructure ID per instructions in the openshift-windows-machine-config-operator"
-        exit 1
-    fi 
-    sed "s/<infrastructureID>/${INFRASTRUCTURE_ID}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
+    if [[ -z "$(oc get node -l kubernetes.io/os=windows 2>/dev/null)" ]]; then
+        echo "Installing the windows node"
+        declare INFRASTRUCTURE_ID=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster)
+        if [[ -z ${INFRASTRUCTURE_ID} ]]; then
+            echo "Could not find Infrastructure ID per instructions in the openshift-windows-machine-config-operator"
+            exit 1
+        fi 
+        sed "s/<infrastructureID>/${INFRASTRUCTURE_ID}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
+    else
+        echo "Found existing windows node.  Skipping Windows MachineSet installation"
+    fi
 
     echo "Deploying Database"
     oc get secret sql-secret -n $vm_prj 2>/dev/null || {
@@ -110,8 +114,10 @@ main() {
     oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
 
     echo "Adding support for further configuring windows node"
-    oc get secret windows-node-private-key -n $sup_prj 2>/dev/null || {
-        oc create secret generic windows-node-private-key --from-file=windows-node=$HOME/.ssh/${KEYNAME} -n $sup_prj
+    oc get secret cloud-private-key -n $sup_prj 2>/dev/null || {
+        echo "Copying private key secret from WMCO project (cloud-private-key)"
+        oc get secret cloud-private-key -n openshift-windows-machine-config-operator -o yaml | sed "/namespace:/d" | oc apply -n $sup_prj -f -
+#        oc create secret generic windows-node-private-key --from-file=windows-node=$HOME/.ssh/${KEYNAME} -n $sup_prj
     }
 
     oc get cm windows-scripts -n $sup_prj 2>/dev/null || {
