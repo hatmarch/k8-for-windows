@@ -29,7 +29,7 @@ spec:
           resources:
             requests:
               storage: 40Gi
-          storageClassName: managed-premium
+          # storageClassName: managed-premium
           volumeMode: Filesystem
         source:
           http:
@@ -46,7 +46,7 @@ spec:
           resources:
             requests:
               storage: 10Gi
-          storageClassName: managed-premium
+          # storageClassName: managed-premium
           volumeMode: Filesystem
         source:
           http:
@@ -54,7 +54,6 @@ spec:
   running: true
   template:
     metadata:
-      creationTimestamp: null
       labels:
         kubevirt.io/domain: win-2019
         kubevirt.io/size: large
@@ -108,24 +107,29 @@ spec:
             vapic: {}
         machine:
           type: pc-q35-rhel8.2.0
+        # It appears we need to set the guest memory lower and separate from the limits because
+        # the operator does not account for the memory that qemu itself takes up in the pod.  This plus the resource
+        # limits below give the qemu 500M.  See also here: https://github.com/kubevirt/kubevirt/issues/4560
+        memory:
+          guest: 6000Mi
         resources:
           limits:
             cpu: "2"
-            memory: 6Gi
+            memory: 6500Mi
           requests:
             cpu: "2"
-            memory: 6Gi
+            memory: 6500Mi
       evictionStrategy: LiveMigrate
       hostname: win-2019
       networks:
         - name: nic-0
           pod: {}
       terminationGracePeriodSeconds: 120
-      tolerations:
-      - key: "VM"
-        operator: "Equal"
-        value: "true"
-        effect: "NoSchedule"
+      # tolerations:
+      # - key: "VM"
+      #   operator: "Equal"
+      #   value: "true"
+      #   effect: "NoSchedule"
       volumes:
         - containerDisk:
             image: registry.redhat.io/container-native-virtualization/virtio-win
