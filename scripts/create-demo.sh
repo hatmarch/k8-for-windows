@@ -148,6 +148,9 @@ main() {
 
     # Give the pipeline account permissions to review nodes
     oc adm policy add-cluster-role-to-user system:node-reader -z pipeline -n $sup_prj
+    # Add the machine viewer cluster role
+    oc apply -f $DEMO_HOME/install/kube/tekton/cluster-role/machine-viewer.yaml
+    oc adm policy add-cluster-role-to-user machine-viewer -z pipeline -n $sup_prj
 
     # Create the ConfigMap for the windows container
     oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n $vm_prj
