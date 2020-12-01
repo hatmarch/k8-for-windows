@@ -468,6 +468,12 @@ image:nginx-builder-conf-bc.png[]
 image:build-badge.png[]
 +
 . When the build finishes, go back to topology view.  Nginx gateway should be running (with a blue ring)
+. Due to cold start slow startup times, using the *Hidden Shell* update the route for the nginx gateway to timeout after 2m (instead of 60 seconds)
++
+----
+oc annotate --overwrite route/hplus-gateway 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
+----
++
 . Duplicate the tab and move it over to the right where the gateway and knative service can be seen while looking at original tab in full view
 . Click on the *Route Badge* on the nginx gateway
 . Hit the website twice and notice that a different site is shown each time
