@@ -1,0 +1,112 @@
+kind: Template
+apiVersion: v1
+metadata:
+  annotations:
+    description: Template for deploying a Windows Container on OpenShift.  Requires Windows Node Support
+    # For creating a custom icon for a template: https://medium.com/@lbroudoux/use-custom-icons-for-your-openshift-templates-7993e5ded646
+    iconClass: icon-windows
+    openshift.io/display-name: Windows ASP.NET Framework Container
+    openshift.io/provider-display-name: Local
+    tags: windows
+    template.openshift.io/long-description: Template for deploying a Windows (ASP.NET Framework) Container on OpenShift.  Requires Windows Node Support
+  name: windows-framework-container-template
+parameters:
+  - name: CONTAINER_IMAGE 
+    displayName: Windows Container Image
+    description: The name of the image to use for SQL Server
+#    value: quay.io/mhildenb/hplussports-win:latest
+    required: true 
+  - name: WEBCONFIG_CM
+    displayName: Web.config Configuration Map Name
+    description: The name of the configuration map that includes the web.config that should be used for the windows framework
+#    value: hplus-webconfig
+    required: true
+  - name: APP_NAME
+    displayName: Application Name
+    description: Unique name for this deployment of the windows image
+#    value: hplus-sports
+    required: true  
+  - name: ROUTE_NAME
+    displayName: Route Name
+    description: The base name that should be used to create the URL to the container
+#    value: "windows-container"
+    required: true
+objects:
+- apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    annotations:
+      app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"hplus-db"}]'
+    labels:
+      app: ${APP_NAME}
+    name: windows-container
+  spec:
+    selector:
+      matchLabels:
+        app: ${APP_NAME}
+    replicas: 1
+    template:
+      metadata:
+        labels:
+          app: ${APP_NAME}
+        name: windows-container
+      spec:
+        tolerations:
+        - key: "os"
+          value: "Windows"
+          Effect: "NoSchedule"
+        containers:
+        - name: ${APP_NAME}
+          image: ${CONTAINER_IMAGE}
+          imagePullPolicy: Always
+          volumeMounts:
+          - mountPath: "c:/var/run/web-config"
+            name: web-config
+          # env:
+          # - name: "ConnectionStrings__HPlusSports"
+          #   value: 'Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports;Integrated Security=False; UID=sa; Password=yourStrong(!)Password;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False'
+          # - name: "ConnectionStrings__HPlusSports_Identity"
+          #   value: 'Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports_Identity;Integrated Security=False; UID=sa; Password=yourStrong(!)Password;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False'        # FIXME: Attempt this with a configmap instead or configuration builder: https://www.codeproject.com/Articles/1216422/Modern-Configuration-for-ASP-NET-with-Configuratio
+          # # env:
+          # - name: CONNSTR_HPlusSports
+          #   value: '"Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports;Integrated Security=False;User ID=sa;Password=yourStrong(!)Password;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False" providerName="System.Data.SqlClient"'
+          # - name: CONNSTR_HPlusSports_Identity
+          #   value: '"Data Source=hplus-db.k8-win-support.svc.cluster.local;Initial Catalog=HPlusSports_Identity;Integrated Security=False;User ID=sa;Password=yourStrong(!)Password;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;ApplicationIntent=ReadWrite;MultiSubnetFailover=False" providerName="System.Data.SqlClient"'
+        nodeSelector:
+          beta.kubernetes.io/os: windows
+        volumes: 
+        - name: web-config
+          configMap:
+            name: hplus-webconfig
+- apiVersion: v1
+  kind: Service
+  metadata:
+    name: ${APP_NAME}
+    labels:
+      app: ${APP_NAME}
+  spec:
+    ports:
+      - port: 80
+        protocol: TCP
+        targetPort: 80
+    selector:
+      app: ${APP_NAME}
+    sessionAffinity: None
+    type: ClusterIP
+- apiVersion: route.openshift.io/v1
+  kind: Route
+  metadata:
+    annotations:
+      # keep openshift from giving up on the container due to cold starts
+      haproxy.router.openshift.io/timeout: 2m
+    labels:
+      app: ${APP_NAME}
+    name: ${ROUTE_NAME}
+  spec:
+    port:
+      targetPort: 80
+    to:
+      kind: Service
+      name: ${APP_NAME}
+      weight: 100
+    wildcardPolicy: None

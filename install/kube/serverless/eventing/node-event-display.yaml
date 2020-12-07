@@ -1,0 +1,32 @@
+# This could eventually be replaced with a call to a tekton event to do some finalization to a new windows node
+# See $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: event-display
+spec:
+  replicas: 1
+  selector:
+    matchLabels: &labels
+      app: event-display
+  template:
+    metadata:
+      labels: *labels
+    spec:
+      containers:
+        - name: event-display
+          image: gcr.io/knative-releases/knative.dev/eventing-contrib/cmd/event_display
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-display
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: event-display
+  sessionAffinity: None
+  type: ClusterIP

@@ -4,51 +4,183 @@
 :toc:
 :toclevels: 4
 
-== Installing Demo ==
-[IMPORTANT]
+== Cloning This Repo ==
+
+This repo has submodules.  When cloning, be sure to use the following command to also pull down any linked submodules:
+----
+git clone --recurse-submodules https://github.com/hatmarch/k8-for-windows-devs
+----
+
+=== Custom Cluster Creation ===
+
+If you have access to a cluster that already supports windows nodes, then you can skip to <<Setup Prerequisites,this section>>
+
+If you don't have ready access to a windows capable cluster, you can create your own.  These instructions guide you through using the `openshift-installer` with Azure
+
+[WARNING]
 ====
-* Before running any script commands, make sure the run the following in the appropriate shell.  Note that the first parameter in this command will set the `PROJECT_PREFIX` environment variable which is referenced in many of the instructions.  If not provided, the default is `demo-dev`.
+These instructions make the assumption that your installation is running in Azure
+
+The instructions also assume that you have done the following pre-requisites prior to this:
+. Configured your azurecli on your host machine (with credentials in `~/.azure`)
+. Updated your azure account so that it can spin up relatively beefy VMs (such as `Standard_D8s_v3`)
+. Registered a domain in azure that the cluster can use
+. Have a `pull-secret` that you obtained from the link:try.openshift.com[openshift installer web site].
+====
+
+Steps to create an [red]#OpenShift 4.6 cluster# in Azure that can support windows nodes and virtualization:
+
+. Clone this demo repository (where this README.adoc resides) 
+. Navigate to the root of the cloned repo.
+. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
 +
 ----
-. scripts/shell-setup.sh 
+docker run -u root -it -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-base:latest /bin/zsh
 ----
-====
++
+. Once in the container run the following to setup environment
++
+----
+. scripts/shell-setup.sh
+----
++
+. Create and customize cluster installation by running the following command:
++
+----
+$DEMO_HOME/scripts/customize-cluster.sh
+----
++
+. When prompted, answer the questions on the installer.  This assumes the following:
+** SSH Public Key: (choose from list of keys in your mounted .ssh directory)
+** Platform: azure
+** Region: australiasoutheast
+** Base Domain: azure.openshifttc.com (this needs to be setup prior)
+** Cluster Name: cbrwin-ocp46
+** Pull Secret: (paste your pull secret)
+. If there were no errors, then you might want to review the files in the link:install/openshift-installer/example-manifests[example manifests] directory to what's in the link:install/openshift-installer/kustomize/installer-workspace[installer workspace] directory to ensure you're happy with the customizations
+. When ready, run the following command to kickoff the creation (expect it to take about 40 minutes)
++
+----
+cd $DEMO_HOME/install/openshift-installer/kustomize/installer-workspace
+./openshift-install create cluster --log-level=debug
+----
++
+. When the cluster is done being created you should see something like this (in between debug spew)
++
+----
+INFO Install complete!                            
+INFO To access the cluster as the system:admin user when using 'oc', run 'export KUBECONFIG=/opt/app-root/src/install/openshift-installer/kustomize/installer-workspace/auth/kubeconfig' 
+INFO Access the OpenShift web-console here: https://console-openshift-console.apps.cbrwin-ocp46.azure.openshifttc.com 
+INFO Login to the console with user: "kubeadmin", and password: "n4e4y-Zhq3k-MyBrZ-rwqq6" 
+----
++
+. Next log into  the cluster using the `export KUBECONFIG` for your newly created cluster
++
+. Run the following script to setup a 'lab-admin' user (passing in the password you want to use)
++
+----
+ADMIN_USER=<pick username>
+ADMIN_PASSWORD=<pick password>
+$DEMO_HOME/create-admin-user.sh $ADMIN_USER "$ADMIN_PASSWORD"
+----
+. If this complete successfully, when challenged to log into the cluser you should now be presented with two options for login:
++
+image:local-user-login.png[]
++
+. When you choose `Local Password` you should now be able to login with the `USER` and `PASSWORD` you provided and have cluster admin access
 
 === Setup Prerequisites ===
 
-. Setup your environment or shell variables as outlined <<Variables Used in This Demo,here>>
-. Run the following script to install the necessary operators to your cluster
+[IMPORTANT]
+====
+To limit the amount of incompatibility in setting up the demo, all the commands that are listed are expected to be run in an appropriately setup container.  You will find this as part of the instructions below and it's important not to skip this step
+
+This demo also supports the link:https://code.visualstudio.com/docs/remote/containers[VS Code Remote Development (Containers)] as can be seen in the .devcontainer directory.  If you use the terminal in VSCode and run this repo in a container, then you don't need to follow the commands to run docker in the shell as your terminal will already be running in a container that has all the necessary runtime components
+====
+
+. Fork or clone this repo onto your local machine (see <<Cloning This Repo,above>>)
+. `cd` to the root of the folder
+. Run the following commandfootnote:[If you are not using `zsh` locally, you can omit the `-v ~/.oh-my-zsh:/home/jboss/.oh-my-zsh` part of the `docker run` command below.  You can also <<Creating a new shell container,create a new version of the shell container>>]:
 +
 ----
-$DEMO_HOME/scripts/install-prereq.sh
-----
-
-==== Cluster Installation ====
-
-See also instructons link:https://docs.openshift.com/container-platform/4.5/installing/installing_azure/installing-azure-network-customizations.html[here] and link:https://github.com/openshift/cluster-network-operator#configuring-ovnkubernetes-on-a-hybrid-cluster[here]
-
-. Download the openshift installer for Azure
-. Use the link:install/openshift-installer/install-config.yaml[install-config.yaml] as a reference to create the cluster.  
-. Create Manifest files using the command
-+
-----
-./openshift-install create manifests
+docker run -u root -it -v ~/.kube:/opt/app-root/.kube -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-shell:latest /bin/zsh
 ----
 +
-. Copy the link:install/openshift-installer/cluster-network-03-config.yaml[cluster-network-03-config.yaml] into the `manifest` subdirectory
-** This configures the cluster network operator to allow hybrid networking so that linux and windows nodes can co-exist in the cluster
-. Continue with the installation process as normal
-
-=== Main Demo Installation ===
-
-. Install the main part of the demo by running this command
-** NOTE: `-p` is optional and `-i` installs prerequisites
+. Run the following script to install the main part of the demo by running this command
+** NOTE: `-p` flag is optional and `-i` installs prerequisites
 +
 ----
 $DEMO_HOME/scripts/create-demo.sh -p $PROJECT_PREFIX -i
 ----
 
+=== AWS Considerations (and RHPDS Clusters) ===
+
+Clusters created with RHPDS (or AWS Clusters) need special consideration to allow kubevirt to work properly.  The reason is that unlike Azure, AWS does not enable nested virtualization on any of their VMs
+
+The only way to get run an OpenShift Virtualization VM on an AWS cluster is to add a node to the cluster that is part of the "metal" series of instances for AWS.  Otherwise the VM will remain in the `pending` state due to it being "unschedulable" (no nodes with kvm virtualization support) 
+
+At the time of this writing, the cheapest metal instance the the MachineAPI supports is the `c5.metal` instance.  Here are the instances that are known to support virtualizationfootnote:[You can find a list of instances and costs link:https://aws.amazon.com/ec2/pricing/on-demand/[here].  Be sure to select the correct region when consulting that table.  Metal instances are not called out separately; find them by search for "metal" in the page]
+
+|===
+|Instance Type |Hourly Rate (ap-southeast-1)
+
+|c5.metal
+|$4.0704
+
+|m5.metal
+|$5.76
+
+|===
+
+WARNING: Metal instances are signficantly more expensive (and have greater capacity) than normal EC2 instances.  Consider eliminating as many other workers in the cluster when adding a metal MachineSet to keep costs down.
+
+To add support for the VM follow these steps:
+
+. Ensure that the `MachineConfig` (which would have been applied if you created your own <<Custom Cluster Creation,custom cluster>>) is addedfootnote:[Given that the installation is happening on bare metal instances, it's not clear these kernelArguments, which have to do with nested virtualization, are actually necessary]:
++
+----
+oc apply -f $DEMO_HOME/install/openshift-installer/kustomize/99-openshift-machineconfig-worker-kargs.yaml
+----
++
+. The easiest way to add the MachineSet to the cluster is to patch an existing MachineSet and change the `spec.providerSpec.value.instanceType` to one of the valid metal instances listed above
+
+
 == Appendix ==
+
+=== Creating a new shell container
+
+As the underlying devcontainer is updated to include new versions of supporting tools, you may need to create new versions of the containers used to run the demo from a shell.  You can create a new shell easily.
+
+NOTE: if you want to create your own version of the container, set the `REGISTRY` and `ACCOUNT` parameters below to match your needs.
+
+. Clone the repo to a machine with docker (or equivalent) installed and change to the root of the repo 
+. Ensure that you are logged into quay.io (or whichever registry you'll be storing your container too)
+. Go into the `.devcontainer` directory that is just under the root of this repo
++
+----
+cd .devcontainer
+----
++
+. Run the following command 
++
+----
+# instead of 1.0 change to whatever tag you want to use
+DEMO_SHELL_TAG=1.0
+# This is an optional parameter, defaults to quay.io
+REGISTRY=quay.io
+# This is an optional parameter, defaults to mhildenb
+ACCOUNT=mhildenb
+./build-n-push-shell.sh ${DEMO_SHELL_TAG} ${REGISTRY} ${ACCOUNT}
+----
++
+. When the command is done, you will be able to access the following container for use: `${REGISTRY}/${ACCOUNT}/win-demo-shell:latest`
+
+
+=== Additional Info about Cluster Creation with openshift-install ===
+
+See also instructons link:https://docs.openshift.com/container-platform/4.5/installing/installing_azure/installing-azure-network-customizations.html[here] and link:https://github.com/openshift/cluster-network-operator#configuring-ovnkubernetes-on-a-hybrid-cluster[here]
+
+link:https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#bring-up-the-openshift-cluster-with-ovn-kubernetes[these instructions] are specifically about setting up a cluster and OVN networking for a Hybrid Cluster and give some deeper information on the work that the underlying scripts used automate
 
 === Connecting to a Windows VM via RDP ===
 

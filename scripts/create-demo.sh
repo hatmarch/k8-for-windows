@@ -4,12 +4,11 @@ set -Eeuo pipefail
 
 declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 declare PROJECT_PREFIX="k8-win"
-declare RESOURCE_GROUP="cbrwin-p8qst"
 declare REGION="australiasoutheast"
 declare ZONE="1"
 
 # The name of the key in the home/.ssh folder
-declare KEYNAME="windows-node.pem"
+declare KEYNAME="windows-node"
 
 display_usage() {
 cat << EOF
@@ -76,109 +75,144 @@ main() {
     oc get ns $vm_prj 2>/dev/null  || { 
         oc new-project $vm_prj
     }
+    # this label is needed to allow windows nodes to run, per this article: 
+    # https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#deploying-in-a-namespace-other-than-default
+    oc label --overwrite namespace $vm_prj 'openshift.io/run-level'=1
 
-    echo "Creating Network attachment (for allowing VM access to internet)"
-    oc apply -f $DEMO_HOME/install/vms/network-attachment-def.yaml
+    sup_prj="${PROJECT_PREFIX}-support"
+    oc get ns $sup_prj 2>/dev/null || {
+        oc new-project $sup_prj
+    }
 
     echo "Creating Windows Virtual Machine"
     oc apply -f $DEMO_HOME/install/vms/win-2019.yaml -n $vm_prj
+    # NOTE: Virtual machine is created asychronously.  There is a reasonably long leadtime before the machine is actually ready (and also some manual setup work to do)
 
-    declare WMCO_PRJ="windows-machine-config-operator"
-    echo "installing the windows node"
-    # FIXME: INstall operator
+    echo "Adding service to allow access to the VM via RDP"
+    oc apply -f $DEMO_HOME/install/vms/rdp-svc.yaml -n $vm_prj
 
-    oc create secret generic cloud-private-key --from-file=private-key.pem=$HOME/.ssh/$KEYNAME -n $WMCO_PRJ
+    if [[ -z "$(oc get node -l kubernetes.io/os=windows 2>/dev/null)" ]]; then
+        echo "Installing the windows node"
+        declare INFRASTRUCTURE_ID=$(oc get -o jsonpath='{.status.infrastructureName}{"\n"}' infrastructure cluster)
+        if [[ -z ${INFRASTRUCTURE_ID} ]]; then
+            echo "Could not find Infrastructure ID per instructions in the openshift-windows-machine-config-operator"
+            exit 1
+        fi 
+        sed "s/<infrastructureID>/${INFRASTRUCTURE_ID}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
+    else
+        echo "Found existing windows node.  Skipping Windows MachineSet installation"
+    fi
 
-    sed "s/<infrastructureID>/${RESOURCE_GROUP}/g" $DEMO_HOME/install/windows-nodes/windows-worker-machine-set.yaml | sed "s/<location>/${REGION}/g" | sed "s/<zone>/${ZONE}/g" | oc apply -f -
+    echo "Deploying Database"
+    oc get secret sql-secret -n $vm_prj 2>/dev/null || {
+        oc create secret generic sql-secret --from-literal SA_PASSWORD='yourStrong(!)Password' -n $vm_prj
+    }
+    # install this template to the openshift project so that it's available everywhere
+    oc apply -f $DEMO_HOME/install/kube/database/database-template.yaml -n openshift
 
-    # virtctl image-upload --image-path="https://software-download.microsoft.com/download/pr/17763.737.190906-2324.rs5_release_svc_refresh_SERVER_EVAL_x64FRE_en-us_1.iso" \
-    #     --pvc-name iso-win2k19 \
-    #     --access-mode=ReadOnlyMany \
-    #     --uploadproxy-url https://cdi-uploadproxy-openshift-cnv.apps.cbrwin.azure.openshifttc.com/ \
-    #     --insecure
+    # actually create the database (FIXME: Do this via the template)
+    oc apply -f $DEMO_HOME/install/kube/database/database-deploy.yaml -n $vm_prj
+
+    echo "Adding support for further configuring windows node"
+    oc get secret cloud-private-key -n $sup_prj 2>/dev/null || {
+        echo "Copying private key secret from WMCO project (cloud-private-key)"
+        oc get secret cloud-private-key -n openshift-windows-machine-config-operator -o yaml | sed "/namespace:/d" | oc apply -n $sup_prj -f -
+#        oc create secret generic windows-node-private-key --from-file=windows-node=$HOME/.ssh/${KEYNAME} -n $sup_prj
+    }
+
+    oc get cm windows-scripts -n $sup_prj 2>/dev/null || {
+        oc create cm windows-scripts --from-file=$DEMO_HOME/install/windows-nodes/scripts -n $sup_prj
+    }
+
+    #
+    # Install (node) event monitoring (WIP)
+    #
+    # FIXME: the event-display should eventually be replaced with an appropriate trigger for the task: install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+    oc apply -f "$DEMO_HOME/install/kube/serverless/eventing/events-sa.yaml" -n $sup_prj
+    oc adm policy add-cluster-role-to-user event-watcher -z events-sa -n $sup_prj
+
+    oc apply -f "$DEMO_HOME/install/kube/serverless/eventing/node-event-display.yaml" -n $sup_prj
+    oc apply -f "$DEMO_HOME/install/kube/serverless/eventing/apiserver-source.yaml" -n $sup_prj
+
  
-    # # Create the gogs server
-    # echo "Creating gogs server in project $cicd_prj"
-    # oc apply -f $DEMO_HOME/install/gogs/gogs.yaml -n $cicd_prj
-    # GOGS_HOSTNAME=$(oc get route gogs -o template --template='{{.spec.host}}' -n $cicd_prj)
-    # echo "Initiatlizing git repository in Gogs and configuring webhooks"
-    # sed "s/@HOSTNAME/$GOGS_HOSTNAME/g" $DEMO_HOME/install/gogs/gogs-configmap.yaml | oc apply -f - -n $cicd_prj
- 
+    echo "Installing Tekton Tasks"
+    oc apply -R -f install/kube/tekton/tasks/ -n $sup_prj
+
+     # There can be a race when the system is installing the pipeline operator in the $vm_prj
+    echo -n "Waiting for Pipelines Operator to be installed in $sup_prj..."
+    while [[ "$(oc get $(oc get csv -oname -n $sup_prj| grep pipelines) -o jsonpath='{.status.phase}' -n $sup_prj 2>/dev/null)" != "Succeeded" ]]; do
+        echo -n "."
+        sleep 1
+    done
+    echo "done."
+
+    # Give the pipeline account permissions to review nodes
+    oc adm policy add-cluster-role-to-user system:node-reader -z pipeline -n $sup_prj
+    # Add the machine viewer cluster role
+    oc apply -f $DEMO_HOME/install/kube/tekton/cluster-role/machine-viewer.yaml
+    oc adm policy add-cluster-role-to-user machine-viewer -z pipeline -n $sup_prj
+
+    # Create the ConfigMap for the windows container
+    oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n $vm_prj
+
+    echo "Deploying Windows Container version of the site"
+    oc apply -f $DEMO_HOME/install/kube/windows-container/windows-container-deployment.yaml -n $vm_prj
+
+    # Deploy to openshift namespace to make template available everywhere
+    oc apply -f $DEMO_HOME/install/kube/windows-container/windows-container-deployment-template.yaml -n openshift
 
 
-    # # 
-    # # Install Tekton resources
-    # #
-    # echo "Installing Tekton supporting resources"
+    echo "Initiatlizing git repository in gitea and configuring webhooks"
+    oc apply -f $DEMO_HOME/install/kube/gitea/gitea-server-cr.yaml -n $sup_prj
+    oc wait --for=condition=Running Gitea/gitea-server -n $sup_prj --timeout=6m
+    echo -n "Waiting for gitea deployment to appear..."
+    while [[ -z "$(oc get deploy gitea -n $sup_prj 2>/dev/null)" ]]; do
+        echo -n "."
+        sleep 1
+    done
+    echo "done!"
+    oc rollout status deploy/gitea -n $sup_prj
 
-    # echo "Installing PVCs"
-    # oc apply -n $cicd_prj -R -f $DEMO_HOME/install/tekton/volumes
+    oc create -f $DEMO_HOME/install/kube/gitea/gitea-init-taskrun.yaml -n $sup_prj
+    # output the logs of the latest task
+    tkn tr logs -L -f -n $sup_prj
 
-    # echo "Installing Tasks (in $cicd_prj and $dev_prj)"
-    # oc apply -n $cicd_prj -R -f $DEMO_HOME/install/tekton/tasks
-    # oc apply -n $dev_prj -f $DEMO_HOME/install/tekton/tasks/oc-client-local-task.yaml
+    # FIXME: eventually replace this with a triggered based update to a new windows node (see above)
+    echo -n "Waiting for windows node to come online..."
+    while [ -z "$(oc get node -l beta.kubernetes.io/os=windows 2>/dev/null)" ]; do
+        echo -n "."
+        sleep 3
+    done
+    echo "done."
+    echo "Updating pull timeout on the windows node"
+    oc create -f $DEMO_HOME/install/kube/tekton/taskrun/run-increase-pull-deadline.yaml -n $sup_prj
+    tkn tr logs -L -f -n $sup_prj
 
-    # echo "Installing tokenized pipeline"
-    # sed "s/demo-dev/${dev_prj}/g" $DEMO_HOME/install/tekton/pipelines/payment-pipeline.yaml | sed "s/demo-support/${sup_prj}/g" | oc apply -n $cicd_prj -f -
+    # Wait for the VM to finish starting up
+    echo -n "Waiting for VM to start up"
+    while [[ -z "$(oc get vmi win-2019-vm -n $vm_prj 2>/dev/null)" ]]; do
+        echo -n "."
+        sleep 5
+    done
+    echo ".done!"
 
-    # echo "Installing Tekton Triggers"
-    # sed "s/demo-dev/${dev_prj}/g" $DEMO_HOME/install/tekton/triggers/triggertemplate.yaml | oc apply -n $cicd_prj -f -
-    # oc apply -n $cicd_prj -f $DEMO_HOME/install/tekton/triggers/gogs-triggerbinding.yaml
-    # oc apply -n $cicd_prj -f $DEMO_HOME/install/tekton/triggers/eventlistener-gogs.yaml
+    echo "Exposing WebDeploy service"
+    oc get svc win-2019-webdeploy -n $vm_prj 2>/dev/null || {
+        oc apply -n $vm_prj -f $DEMO_HOME/install/vms/web-deploy-svc.yaml 
+    }
+    oc get svc vm-web -n $vm_prj 2>/dev/null || {
+        echo "Exposing web service on the virtual machine"
+        virtctl expose vmi win-2019-vm --name=vm-web --target-port 80 --port 8080 -n $vm_prj
+    }
+    oc get route vm-web -n $vm_prj 2>/dev/null || {
+        oc expose svc/vm-web -n $vm_prj
+    } 
+    # Annotate the route to have a longer timeout to allow for cold-startup slowness
+    sleep 2
+    oc annotate --overwrite route/vm-web 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
 
-    # # There can be a race when the system is installing the pipeline operator in the $cicd_prj
-    # echo -n "Waiting for Pipelines Operator to be installed in $cicd_prj..."
-    # while [[ "$(oc get $(oc get csv -oname | grep pipelines) -o jsonpath='{.status.phase}')" != "Succeeded" ]]; do
-    #     echo -n "."
-    #     sleep 1
-    # done
 
-    # # Allow the pipeline service account to push images into the dev account
-    # oc policy add-role-to-user -n $dev_prj system:image-pusher system:serviceaccount:$cicd_prj:pipeline
-    
-    # # Add a cluster role that allows fined grained access to knative resources without granting edit
-    # oc apply -f $DEMO_HOME/install/tekton/roles/kn-deployer-role.yaml
-    # # ..and assign the pipeline service account that role in the dev project
-    # oc adm policy add-cluster-role-to-user -n $dev_prj kn-deployer system:serviceaccount:$cicd_prj:pipeline
-
-    # # allow any pipeline in the dev project access to registries in the staging project
-    # oc policy add-role-to-user -n $stage_prj registry-editor system:serviceaccount:$dev_prj:pipeline
-
-    # # Allow tekton to deploy a knative service to the staging project
-    # oc adm policy add-role-to-user -n $stage_prj kn-deployer system:serviceaccount:$dev_prj:pipeline
-
-    # # Seeding the .m2 cache
-    # echo "Seeding the .m2 cache"
-    # oc apply -n $cicd_prj -f $DEMO_HOME/install/tekton/init/copy-to-workspace-task.yaml 
-    # oc create -n $cicd_prj -f install/tekton/init/seed-cache-task-run.yaml
-    # # This should cause everything to block and show output
-    # tkn tr logs -L -f -n $cicd_prj 
-
-    # # wait for gogs rollout to complete
-    # oc rollout status deployment/gogs -n $cicd_prj
-
-    # echo "Initializing gogs"
-    # oc create -n $cicd_prj -f $DEMO_HOME/install/gogs/gogs-init-taskrun.yaml
-    # # This should fail if the taskrun fails
-    # tkn tr logs -L -f -n $cicd_prj 
-
-    # # # configure the nexus server
-    # # echo "Configuring the nexus server..."
-    # # ${SCRIPT_DIR}/util-config-nexus.sh -n $cicd_prj -u admin -p admin123
-
-    # echo "Install configmaps"
-    # oc apply -R -n $dev_prj -f $DEMO_HOME/install/config/
-
-    # echo "Installing coolstore website (minus payment)"
-    # oc process -f $DEMO_HOME/install/templates/cool-store-no-payment-template.yaml -p PROJECT=$dev_prj | oc apply -f - -n $dev_prj
-
-    # echo "Correcting routes"
-    # oc project $dev_prj
-    # $DEMO_HOME/scripts/route-fix.sh
-
-    # echo "updating all images"
-    # # Fix up all image streams by pointing to pre-built images (which should trigger deployments)
-    # $DEMO_HOME/scripts/image-stream-setup.sh
+    echo "Demo installation completed successfully!"
 }
 
 main "$@"

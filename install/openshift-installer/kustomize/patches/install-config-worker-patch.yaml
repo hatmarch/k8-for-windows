@@ -1,0 +1,17 @@
+apiVersion: v1
+baseDomain: azure.openshifttc.com
+kind: kustomization
+metadata:
+  name: cbrwin-ocp46
+compute:
+- architecture: amd64
+  name: worker
+  hyperthreading: Enabled
+  platform:
+    azure:
+      # Need a reasonably beefy machine to handle the VM
+      type: Standard_D8s_v3
+      osDisk:
+        diskSizeGB: 512 
+        diskType: ""
+  replicas: 1

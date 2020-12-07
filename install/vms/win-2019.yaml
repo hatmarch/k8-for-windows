@@ -5,6 +5,7 @@ metadata:
     kubevirt.io/latest-observed-api-version: v1alpha3
     kubevirt.io/storage-observed-api-version: v1alpha3
     name.os.template.kubevirt.io/win2k19: Microsoft Windows Server 2019
+    app.openshift.io/connects-to: '[{"apiVersion":"apps/v1","kind":"Deployment","name":"hplus-db"}]'
   name: win-2019-vm
   labels:
     app: win-2019-vm
@@ -20,7 +21,7 @@ spec:
       kind: DataVolume
       metadata:
         creationTimestamp: null
-        name: win-2019-winhd
+        name: win-2019-mainhd
       spec:
         pvc:
           accessModes:
@@ -28,11 +29,11 @@ spec:
           resources:
             requests:
               storage: 40Gi
-          storageClassName: managed-premium
+          # storageClassName: managed-premium
           volumeMode: Filesystem
         source:
           http:
-            url: "https://mwh-demo-assets.s3-ap-southeast-2.amazonaws.com/win-2019-sysprep.img"
+            url: "https://mwh-demo-assets.s3-ap-southeast-2.amazonaws.com/win-2019-sysprep-2.img"
     - apiVersion: cdi.kubevirt.io/v1alpha1
       kind: DataVolume
       metadata:
@@ -45,7 +46,7 @@ spec:
           resources:
             requests:
               storage: 10Gi
-          storageClassName: managed-premium
+          # storageClassName: managed-premium
           volumeMode: Filesystem
         source:
           http:
@@ -53,7 +54,6 @@ spec:
   running: true
   template:
     metadata:
-      creationTimestamp: null
       labels:
         kubevirt.io/domain: win-2019
         kubevirt.io/size: large
@@ -72,16 +72,17 @@ spec:
             rtc:
               tickPolicy: catchup
           utc: {}
-        cpu:
-          cores: 4
-          sockets: 1
-          threads: 1
+        # can't have cpu and request/limits
+        # cpu:
+        #   cores: 2
+        #   sockets: 1
+        #   threads: 1
         devices:
           disks:
             - bootOrder: 1
               disk:
                 bus: virtio
-              name: winhd
+              name: mainhd
             - cdrom:
                 bus: sata
               name: iso
@@ -106,15 +107,29 @@ spec:
             vapic: {}
         machine:
           type: pc-q35-rhel8.2.0
+        # It appears we need to set the guest memory lower and separate from the limits because
+        # the operator does not account for the memory that qemu itself takes up in the pod.  This plus the resource
+        # limits below give the qemu 500M.  See also here: https://github.com/kubevirt/kubevirt/issues/4560
+        memory:
+          guest: 6000Mi
         resources:
+          limits:
+            cpu: "2"
+            memory: 6500Mi
           requests:
-            memory: 6Gi
+            cpu: "2"
+            memory: 6500Mi
       evictionStrategy: LiveMigrate
       hostname: win-2019
       networks:
         - name: nic-0
           pod: {}
-      terminationGracePeriodSeconds: 3600
+      terminationGracePeriodSeconds: 120
+      # tolerations:
+      # - key: "VM"
+      #   operator: "Equal"
+      #   value: "true"
+      #   effect: "NoSchedule"
       volumes:
         - containerDisk:
             image: registry.redhat.io/container-native-virtualization/virtio-win
@@ -123,5 +138,5 @@ spec:
             name: win-2019-iso
           name: iso
         - dataVolume:
-            name: win-2019-winhd
-          name: winhd
+            name: win-2019-mainhd
+          name: mainhd

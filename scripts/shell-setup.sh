@@ -14,10 +14,14 @@ if [[ -z "${SCRIPT}" ]]; then
 fi
 
 export DEMO_HOME=$( cd "$(dirname "${SCRIPT}")/.." ; pwd -P )
-export PROJECT_PREFIX=${1:-dev-demo}
+export PROJECT_PREFIX=${1:-k8-win}
+export vm_prj="${PROJECT_PREFIX}-vm"
+export sup_prj="${PROJECT_PREFIX}-support"
 
 echo "DEMO_HOME set to $DEMO_HOME"
 echo "PROJECT_PREFIX is $PROJECT_PREFIX"
+echo "vm_prj is $vm_prj"
+echo "sup_prj is $sup_prj"
 
 alias cpr='tkn pr cancel $(tkn pr list -o name --limit 1 | cut -f 2 -d "/")'
 alias ctr='tkn tr cancel $(tkn tr list -o name --limit 1 | cut -f 2 -d "/")'
@@ -86,3 +90,8 @@ azure-down() {
 
     az vm deallocate --ids $(az vm list -g ${RESOURCE_GROUP} --query "[].id" -o tsv)
 }
+
+if [[ -f $DEMO_HOME/install/openshift-installer/kustomize/installer-workspace/auth/kubeconfig ]]; then
+    echo "Found kubeconfig for created cluster.  Setting KUBECONFIG to point to it"
+    export KUBECONFIG=$DEMO_HOME/install/openshift-installer/kustomize/installer-workspace/auth/kubeconfig
+fi

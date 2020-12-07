@@ -1,0 +1,6 @@
+resources:
+    - installer-workspace/install-config.yaml
+patchesStrategicMerge:
+    - patches/install-config-network-patch.yaml
+    - patches/install-config-worker-patch.yaml
+    - patches/install-config-master-patch.yaml

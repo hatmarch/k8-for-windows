@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1beta1
+kind: TaskRun
+metadata:
+  generateName: run-increase-pull-deadline-
+spec:
+  params:
+    - name: SSH_KEY_NAME
+      value: 'private-key.pem'
+    # The task will attempt to determine the SSH user that should be used based on provider.  If this
+    # is not working for you, you can uncomment this and provide it here
+    # - name: SSH_USER_OVERRIDE
+    #   NOTE: usual AWS machine user for windows instances
+    #   value: 'Administrator'
+    - name: TARGET_NODE_LABEL
+      value: 'beta.kubernetes.io/os=windows'
+    - name: SCRIPTS_CONFIG_MAP
+      value: "windows-scripts"
+    - name: SCRIPT_NAME
+      value: "image-pull-timeout.ps1"
+    - name: SSH_SECRET_NAME
+      value: 'cloud-private-key'
+  taskRef:
+    name: powershell-cmd

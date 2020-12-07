@@ -5,17 +5,17 @@ set -Eeuo pipefail
 declare -r SCRIPT_DIR=$(cd -P $(dirname $0) && pwd)
 declare PROJECT_PREFIX="k8-win"
 declare OCP_VIRT_OPERATOR_PRJ="openshift-cnv"
-declare KAFKA_PROJECT_IN=""
+declare sup_prj="${PROJECT_PREFIX}-support"
 
 display_usage() {
 cat << EOF
-$0: Developer Demo Uninstall --
+$0: k8 for Window Devs Demo Uninstall --
 
   Usage: ${0##*/} [ OPTIONS ]
   
     -f         [optional] Full uninstall, removing pre-requisites
-    -p <TEXT>  [optional] Project prefix to use.  Defaults to dev-demo
-    -k <TEXT>  [optional] The name of the support project (e.g. where kafka is installed).  Will default to dev-demo-support
+    -p <TEXT>  [optional] Project prefix to use.  Defaults to k8-win
+    -s <TEXT>  [optional] The name of the support project.  Defaults to k8-win-support
 EOF
 }
 
@@ -32,9 +32,9 @@ get_and_validate_options() {
 
   
   # parse options
-  while getopts ':k:p:fh' option; do
+  while getopts ':s:p:fh' option; do
       case "${option}" in
-          k  ) kafka_flag=true; KAFKA_PROJECT_IN="${OPTARG}";;
+          s  ) sup_flag=true; sup_prj="${OPTARG}";;
           p  ) p_flag=true; PROJECT_PREFIX="${OPTARG}";;
           f  ) full_flag=true;;
           h  ) display_usage; exit;;
@@ -50,13 +50,11 @@ get_and_validate_options() {
       exit 1
   fi
 
-  if [[ ${kafka_flag:-} && -z "${KAFKA_PROJECT_IN}" ]]; then
-      printf '%s\n\n' 'ERROR - Support project (KAFKA_PROJECT) must not be null' >&2
+  if [[ ${sup_flag:-} && -z "${sup_prj}" ]]; then
+      printf '%s\n\n' 'ERROR - Support project must not be null' >&2
       display_usage >&2
       exit 1
   fi
-
-  KAFKA_PROJECT=${KAFKA_PROJECT_IN:-"${PROJECT_PREFIX}-support"}
 }
 
 main() {
@@ -69,25 +67,55 @@ main() {
 
     get_and_validate_options "$@"
 
-    # perhaps delete all knative services first
-
     vm_prj="${PROJECT_PREFIX}-vm"
 
-    if [[ "${full_flag:-""}" ]]; then
+    if [[ -n "${full_flag:-""}" ]]; then
         remove-operator "hco-operatorhub" ${OCP_VIRT_OPERATOR_PRJ} || true
 
         remove-operator "openshift-pipelines-operator-rh" || true
     fi
 
-    echo "Deleting project $vm_prj"
-    oc delete project "${vm_prj}" || true
+    PROJECTS=( $vm_prj $sup_prj )
+    for PROJECT in ${PROJECTS[@]}; do
+        echo "Deleting project ${PROJECT}"
+        oc delete project ${PROJECT} || true
+    done
 
+    echo "Deleting windows machine (this will also delete any windows nodes associated with this machine set)"
+    oc delete machineset -l demo-created=true -n openshift-machine-api || true
+ 
    if [[ -n "${full_flag:-}" ]]; then
+        echo "Removing node watcher leftovers"
+        oc delete -f $DEMO_HOME/install/kube/serverless/eventing/events-sa.yaml || true
+
+        echo "Uninstalling knative eventing"
+        oc delete knativeeventings.operator.knative.dev knative-eventing -n knative-eventing || true
+        oc delete namespace knative-eventing || true
+
+        echo "Uninstalling knative serving"
+        oc delete knativeservings.operator.knative.dev knative-serving -n knative-serving || true
+        # note, it takes a while to remove the namespace.  Move on to other things before we wait for the removal
+        # of this project below
+        oc delete namespace knative-serving --wait=false || true
+
+        echo "Removing WMCO"
+        remove-operator "community-windows-machine-config-operator" openshift-windows-machine-config-operator || true
+        oc delete og openshift-windows-machine-config-operator-og -n openshift-windows-machine-config-operator
+
+        echo "Removing Gitea Operator"
+        oc delete project gpte-operators || true
+        oc delete clusterrole gitea-operator || true
+        remove-crds gitea || true
+
         echo "Removing hyperconverged CR"
         oc delete hyperconvergeds/kubevirt-hyperconverged -n openshift-cnv || true
 
         echo "Cleaning out openshift-cnv project"
         oc delete all --all -n openshift-cnv || true
+
+        # actually wait for knative-serving to finish being deleted before we remove the operator
+        oc delete namespace knative-serving || true
+        remove-operator "serverless-operator" || true
 
         echo "Cleaning up CRDs"
 

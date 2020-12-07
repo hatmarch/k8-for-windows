@@ -1,0 +1,481 @@
+= Kubernetes for Windows Developers Demo
+:experimental:
+:imagesdir: images
+:toc:
+:toclevels: 4
+
+[IMPORTANT]
+.On necessary operators
+====
+See link:../README.adoc[] for information on operators and other prerequisites that must be installed for the demo to run properly.
+====
+
+== Initial Setup
+
+The following sections review the different windows and potential setup necessary prior to going through the different chapters of this walkthrough.
+
+=== Demo Shell
+
+. Go to the root of the `k8-for-windows-devs` directory on your local machine
+. Run this docker command from that directory (so that all the remaining commands will be run from inside a container will all the necessary tools installed)
++
+----
+docker run -u root -it -v ~/.kube:/opt/app-root/.kube -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/.ssh -v $(pwd):/opt/app-root/src quay.io/mhildenb/win-demo-shell:latest /bin/zsh
+----
+
+=== Hidden Shell
+
+. Open a shell that is offscreen from the demo that you will use to run background support commands
+. Configure this shell as written for <<Demo Shell, the demo shell>>
+
+=== RDP: Windows Workstation
+
+NOTE: This is currently not virtualized is run on a physical windows 10 machine
+
+Configuration points:
+* Windows Magnifier On
+** kbd:[ctrl+CMD+m] to turn on windows magnifier
+** minimize the app
+* Visual Studio Community 2019
+** FontSizer extension
+* Docker for Windows
+* WebDeploy?
+
+You will also need to be logged into quay.io for pushing containers to docker
+
+=== RDP: Windows Server
+
+. Find the IP address of the Windows Server (the VM running IIS) by running this command and copying the output
++
+----
+oc get svc vmrdp -n $vm_prj -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+----
++
+. Once in, open IIS Server Manager opened to default website
++
+image:vm-initial-screen.png[]
+
+=== Chrome Tabs
+
+. IIS Default Web Site (as hosted by VM)
+. OpenShift: Topology view of k8-win-vm
+. OpenShift: Admin > Installed Operators > Virtualization Operator of the `openshift-cnv` namespace
+. OpenShift: Admin > Compute > Machine Sets
+. OpenShift: Gitea 
+** Open to this url `echo "https://$(oc get route gitea -n $sup_prj -o jsonpath='{ .spec.host }')/gogs/k8-win-demo-support"`
+** Logged in:
+*** user: gogs
+*** pass: gogs
+
+=== VS Code
+
+. To show some of the yaml files
+
+== Demo: Intro to HPlusSport and Windows Development ==
+
+. In the shell run the follow command to get the url of the repo to clone
++
+----
+echo "https://$(oc get route gitea -n $sup_prj -o jsonpath='{ .spec.host }')/gogs/k8-win-code-repo.git"
+----
++
+. On the Windows Workstation open Visual Studio 2019 open visual studio and paste in that repo
++
+image:vs-code-import.png[]
++
+. Change to the HPlusSports Solution view
++
+. Start the website by using IIS Express debugging
+. Briefly show the site and then stop debugging by closing the web window by clicking the `x`
+. Back in the `Solution Explorer` wiew the properties of the website project
++
+image:framework-properties.png[]
++
+. Show the nuget packages but opening `Tools > NuGet Package Manager > Manage NuGet Packages for Solution...`
++
+image:nuget.png[]
++
+. Show the MVC components of the website by clicking on files in the navbar such as:
+** `Features\Home\HomeController.cs`: Typical MVC app
+** Show `Features\Shared\_Layout.cshtml`: Typical shared layout.
+. [blue]#Update the image by changing `Content\logo.png` to `Content\new-logo.png`#
+. Continue showing parts of the site:
+** `Features\Home\Index.cshtml`: Point out web.config 
+*** [blue]#Add a message as an H1 header (hello from vscode)#
+** `Features\Images\ImagesController`: Mention that this is used to lookup images for products
++
+. Rerun the website using the debugger
+. Show changes then stop build
+
+== Demo: Deploy to IIS 
+
+. Start by showing the current IIS server website, which should be the default website
+** You can find the URL by running this command in the shell
++
+----
+echo "http://$(oc get route vm-web -n $vm_prj -o jsonpath='{.spec.host}')/"
+----
++
+. You should see this page
++
+image:iis-default.png[]
++
+. Find the IP address of the WebDeploy service by running this command and copying the output
+** NOTE: You might consider assigning this IP address to an `A` Record in Azure DNS
++
+----
+oc get svc win-2019-webdeploy -n $vm_prj -o jsonpath='{.status.loadBalancer.ingress[0].ip}'
+----
++
+. Right click on the `Website` in the Solution Explorer and choose `Publish.."
+. Select `Deploy to IIS Server` and click the `Edit` button to change the deployment endpoint to the IP address copied above
++ 
+image:iis-deploy.png[]
++
+. Click on `Settings` and Show the DBContext as mysterious local service address
++
+image:svc-sql-connection.png[]
++
+. Close the Edit Profile window
+. Click `Publish`
+. Log into the machine when prompted
+** user: lab-admin
+** pass: r3dh4t1!
+. Show the logs and then switch to Windows Server RDP Session
+. Continually hit kbd:[F5] to see the website appear
+. When deployment is done go back to the Chrome Tab with the IIS initial website and refresh
+. Changes should now be visible, but you should get a database error
+
+== Demo: Intro to Virtualization
+
+. Switch back to Windows Server RDP and minimize full screen mode.  Move it closer to browser
+. Switch to Topology View OpenShift Tab and Click on the Vm
+. Click on the VM name to get to the VM Overview
+. Click on Console and login lab-admin
+** At this point the RDP session should stop
+** Console should show where RDP session is
+. Switch Back to `virtualization overview` and highlight the following:
+** Inventory: 3 disks, 1 Nic, 
+** Utilization: Resource Consumption
+. Show the `YAML` tab to show some of the key fields
+. Switch to the Virtualization operator tab and show details of the operator.  Point out:
+** Description
+** KubeVirt
+. Switch back to Topology View and click on VM again.  Point out the following in the side-bar
+** Services
+** Route
+. Add the SQL Server Database from a template
+.. Go to `Add`
+.. Select Templates
+.. Type `SQL Server`.  Template should appear
+.. Fill in the template as follows [orange]#referring back to the connection strings on the deployment# in terms of how the service is named
++
+image:mssql-template.png[]
++
+.. Click "Instantiate Template"
+. Once the template is created show the deployment being added and go to the *View Logs* of the pod under `Resources`
+. Wait until you see in the logs something like this:
++
+image:sql-database-logs.png[]
++
+. Switch to Website tab and hit refresh
+. Register user
+** User: sam@shire.com
+** Pass: test123
+
+== Demo: Create a Windows Container
+
+. Start at the Windows Workstation VM in Visual Studio
+. Use kbd:[ctrl+t] to quickly open `index.cshtml`
+. Edit <H1> header to have the following message:
+** Hello from Windows Container
+. Go to the Website in Solution explorer and from right-click contextual menu, select `Publish...` (if not on this already)
+. Select the profile `FolderProfile - Docker`
+. Click `Edit` to briefly show where output will go
++
+image:folder-deploy-publish.png[]
++
+. When the publish is complete, switch to folder view
++
+image:file-view.png[]
++
+. Use kbd:[ctrl+t] to open `Dockerfile` quickly
+** Might be the third option down
+. Explain Container Dockerfile
+. Open the developer terminal by using kbd:[ctrl+`]
+. Run the following commands to kick off a docker build
++
+----
+cd k8-win-code-repo\HSport
+docker build -t quay.io/mhildenb/hplussports-win:latest .
+----
++
+. Use kbd:[ctrl+t] to open `SvcWrapper.ps1` quickly
+** Explain what it does with web.configs
++
+. Use kbd:[ctrl+t] to open `Web.config.local`
+** Show App Settings
+** Show `connection strings`
+. Right click on the file tab to get the Full Path.  Then use it to copy to a temporary directory
++
+----
+cp C:\Users\workstation-admin\source\repos\k8-win-code-repo\HSport\Website\Web.config.local c:\temp\Web.config
+----
++
+. *Pin* the Developer Terminal (so it will show whilst running)
+. Run the Dockerfile locally (from the developer terminal)
++
+----
+docker run -it --rm -v c:\temp:c:\var\run\web-config -p 8080:80 quay.io/mhildenb/hplussports-win:latest
+----
++
+. _This should be seen in the docker logs if the volume mounts worked properly_
++
+----
+Moving Web.config from configmap at c:\var\run\web-config\Web.config into C:\inetpub\wwwroot
+----
+. Open chrome and open localhost:8080
+. Point out the logs being piped from the IIS server in the container [red]#NOTE: Might take up to 30 seconds for them to appear#
+. Shut down the docker container (with kbd:[ctrl+c]) and then return to Chrome and show that the website is no longer accessible on port 8080
+. Push to quay.io as latest with the following command
++
+----
+docker push quay.io/mhildenb/hplussports-win:latest
+----
+
+== Demo: Deploy Windows Container to OpenShift: Part 1
+
+. Just as we showed previously, we need to create a configmap that contains the proper configuration for this environment
+.. Open the Visual Studio window
+.. Use kbd:[cmd+p] to open web.config.k8 quickly
+.. Point out items below (and in image):
+*** `connectionString`
+*** `appSettings`
++
+image:relevant-configuration.png[]
++
+. From the VSCode terminal issue the following command to upload that configmap to the cluster
++
+----
+oc create cm hplus-webconfig --from-file=web.config=$DEMO_HOME/k8-dotnet-code/HSport/Website/Web.config.k8 -n $vm_prj
+----
+. Next show the deployment for the *windows container* we just built locally
+.. From the Developer Perspective, create new from catalog
++
+image:create-from-catalog.png[]
++
+.. Type `Windows` in the search bar and select the Windows Framework template
+.. Click instantiate template
+.. Fill in the template as follows:
+*** Windows Container Image: `quay.io/mhildenb/hplussports-win:latest`
+*** Web.config Configuration Map Name: `hplus-webconfig`
+*** Application Name: `hplus-sports`
+*** Route Name: `windows-container`
++
+image:windows-container-template.png[]
++
+.. Click `Create`
+. Show the Windows Container appear in the Topology View
+. Take a look at the pod events and highlight that the container cannot be scheduled because *there is no node to run it*
+
+== Demo: Deploy Windows Container to OpenShift: Part 2: Machine API
+
+. Switch the Administrator View Browser tab
+. Select the Compute > Machine Sets and select the win machine set
+. Click on the YAML to highlight certain fields (first collapsing the `managedFields` stuff for readability)
++
+image:machine-set-highlights.png[]
++
+. Then click on Details Tab and click the edit button next to the machine count to change this to 1
++
+image:machine-set-count.png[]
++
+. Switch back to the `Developer Perspective` tab we were on before and watch until the pull request is complete
+** this will take some time 
+. [red]#In the background need to wait for the node to appear so that we can update the pull time#
+.. From the `Hidden Shell` run this command to watch for node events
++
+----
+stern event-display -n $sup_prj
+----
++
+.. When you see some events come through, then you can break out of the shell and run this command to increase pull times
++
+----
+oc project $sup_prj
+tskr install/kube/tekton/taskrun/run-increase-pull-deadline.yaml
+----
++
+.. You should see output like this:
++
+----
+[run-cmd] I1102 02:14:54.956734      17 request.go:621] Throttling request took 1.103709095s, request: GET:https://172.30.0.1:443/apis/migration.k8s.io/v1alpha1?timeout=32s
+[run-cmd] Attempting to remote to the node node/winnode-1-l6v86 [10.0.32.5] with user capi...
+[run-cmd] Failed to add the host to the list of known hosts (/tekton/home/.ssh/known_hosts).
+[run-cmd] True
+[run-cmd] The operation completed successfully.
+[run-cmd] 
+[run-cmd] Status   Name               DisplayName                           
+[run-cmd] ------   ----               -----------                           
+[run-cmd] Running  kubelet            kubelet                               
+[run-cmd] 
+[run-cmd] 
+----
+. Wait until the event view shows that the pull is complete (mention that windows containers are large)
++ 
+image:successful-pull.png[]
++
+. Go back to the Topology View and view the logs of the container
+. Click on the route tag on the container to open the container website
++
+image:container-site.png[]
++
+. Login with credentials used above to prove they are using the same DB
+** User: sam@shire.com
+** Pass: test123
+. Pick something to add to the cart:
++
+image:add-to-cart.png[]
+
+== Demo: Create a DotNet Core WebAPI image service
+
+. Open the developer tools on the browser, and then refresh the cart page
+. Notice the call to get all the images for the active-wear category
++
+image:image-call.png[]
++
+. Explain that this will be the impetus behind the creation of a dotnet core WebAPI microsite to handle image lookups in our first step to strangle the monolith
+. Swipe to the `Windows Workstation` desktop
+. Make sure you are in Explorer view in Visual Studio.  Select the HPlusSports-core solution
+. When propted to swtch to Linux based Docker, select Yes
+** Might need to use _Windows Magnifier_ with kbd:[CMD + +] to zoom in on the dialog (use kbd:[CMD + -] to zoom out)
+. Open the Project Properties to show what we're dealing with:
++
+image:dotnet-core-properties.png[]
++
+. Open the Debug Properties (and use windows magnifier) to show Environment variable for database (leveraging dotnet core)
++
+image:debug-properties.png[]
++
+. Use kbd:[ctrl+t] to quickly open the `Dockerfile` that is in the ImagesService directory
+. Run the Debugger using the Docker profile
+. This should build a Docker container
+** Show the Build Output > Build
+** Show the `Containers` panel
+. You should only see a placeholder image
+. Unpin the developer console
++
+. Use kbd:[ctrl+t] to quickly open the `Startup.cs` file and the middleware pipelines
+. Use kbd:[ctrl+t] and the following string to quickly open the `Image` method in `ImagesController.cs`:
++
+----
+# image (
+----
++
+. Uncomment the commented code:
++
+image:image-controller-change.png[]
++
+. Rerun the `Docker` debug profile
++
+. Show that it works in the browser
+. Use kbd:[ctrl+t] to quickly open the `Dockerfile`
+. Use kbd:[ctrl+`] to open the Developer Terminal
+. Run the following commands to build and push the images
++
+----
+docker build -t quay.io/mhildenb/hplus-imagesvc:latest . -f .\ImageService\Dockerfile
+docker push quay.io/mhildenb/hplus-imagesvc:latest
+----
+. 
+. Switch to the Browser Desktop and select the `Topology View` tab of the $vm_prj
+. Select Add container image and fill out based on this:
+** image: `quay.io/mhildenb/hplus-imagesvc:latest`
+** Runtime Icon: `dotnet`
+** Application: `no application group`
+** Name: hplus-imagesvc
+** Resources: Knative Service
++
+image:add-knative-container.png[]
++
+. Add the following Environment Variable in `Deployment`
+** explain that instead of configmap, dotnet core is more container friendly and lets us specify DB connection strings in Environment
++
+----
+"ConnectionStrings__ImageDbContext"='Server=hplus-db; Database=HPlusSports; Integrated Security=False; UID=sa; Password=yourStrong(!)Password; MultipleActiveResultSets=true'
+----
++
+image:knative-deployment.png[]
++
+. Hit create and notice it appear in the Topology view
++
+. Wait for it to spin down to zero
+. Click on the deployment and copy the route
++
+image:knative-route.png[]
++
+. In the `Demo Shell` paste the URL to set the environment variable `KN_ROUTE`.  Or alternatively use the command below
++
+----
+# KN_ROUTE=$(kn route describe hplus-imagesvc -n $vm_prj -o jsonpath='{.status.url}')
+----
++
+. With the Knative service in view run the following command in the shell
++
+----
+curl -v $KN_ROUTE/api/Images/Category/active-wear-men
+----
++
+. You should see a redirect to the proper image url
+
+== Demo: Strangle the Monolith
+
+. Switch to the OpenShift: Gitea Tab
+. Open the Nginx config file at: `nginx/gateway-conf/nginx.conf`
+. Highlight the following areas:
++
+image:nginx-config.png[]
++
+. Go back to the top of the repo and copy the repo clone URL
++
+image:repo-clone.png[]
++
+. Swtich to the Topology View and select `Add` > `Developer Catalog`
+. Find the `nginx` builder image as seen here:
++
+image:nginx-builder.png[]
++
+. Select `Create Application` 
++
+. Configure the gateway as per these images:
++
+image:nginx-builder-conf-1.png[]
+image:nginx-builder-conf-2.png[]
+. Update `Deployment` Settings with the [red]#*host*# from the `KN_ROUTE` that was set above
+** `KN_HOST=hplus-imagesvc-k8-win-vm.apps.cbrwin-ocp46.azure.openshifttc.com`
++
+image:nginx-builder-conf-deploy.png[]
++
+. Update `Build Configuration` Settings:
+** `GIT_SSL_NO_VERIFY=true`
++
+image:nginx-builder-conf-bc.png[]
++
+. Finally click "Create"
++
+. Look at the running build by clicking the build badge:
++
+image:build-badge.png[]
++
+. When the build finishes, go back to topology view.  Nginx gateway should be running (with a blue ring)
+. Due to cold start slow startup times, using the *Hidden Shell* update the route for the nginx gateway to timeout after 2m (instead of 60 seconds)
++
+----
+oc annotate --overwrite route/hplus-gateway 'haproxy.router.openshift.io/timeout'='2m' -n $vm_prj
+----
++
+. Duplicate the tab and move it over to the right where the gateway and knative service can be seen while looking at original tab in full view
+. Click on the *Route Badge* on the nginx gateway
+. Hit the website twice and notice that a different site is shown each time
+** Also notice knative service spinning up
+
