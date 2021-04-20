@@ -136,6 +136,10 @@ main()
     echo "Installing Windows Machine Config Operator"
     #
 
+    oc get project $WMCO_PRJ 2>/dev/null || {
+      oc create ns $WMCO_PRJ
+    }
+
     echo "Creating ssh secret for wmc operator"
     # FIXME: KEYNAME should be driven by incoming parameters
     secret_name="cloud-private-key"
@@ -164,36 +168,27 @@ apiVersion: operators.coreos.com/v1alpha1
 kind: Subscription
 metadata:
   labels:
-    operators.coreos.com/community-windows-machine-config-operator.openshift-windows-mac: ""
-  name: community-windows-machine-config-operator
+    operators.coreos.com/windows-machine-config-operator.openshift-windows-machine-confi: ""
+  name: windows-machine-config-operator
   namespace: openshift-windows-machine-config-operator
 spec:
-  channel: alpha
+  channel: stable
   installPlanApproval: Automatic
-  name: community-windows-machine-config-operator
-  source: community-operators
+  name: windows-machine-config-operator
+  source: redhat-operators
   sourceNamespace: openshift-marketplace
 EOF
     fi
 
+    echo -n "Waiting for windows machine config operator deployment to appear"
+    while [[ -z "$(oc get deploy/windows-machine-config-operator -n $WMCO_PRJ 2>/dev/null)" ]]; do
+      echo -n "."
+      sleep 1
+    done
     # Wait for rollout of operator to complete
+    echo "Waiting for windows machine config operator deployment finish"
     oc rollout status deploy/windows-machine-config-operator -n $WMCO_PRJ
 
-    #
-    # Subscribe to additional Catalogs
-    #
-    # redhat-operators-45 is the legacy operators provided with ocp-4.5.  Until pipelines operator is available in the 4.6
-    # redhat-operators stream, we need to use this
-    SOURCE_FILES=( "redhat-operators-45.yaml" )
-    for SOURCE_FILE in ${SOURCE_FILES[@]}; do
-      OUTPUT=$(oc apply -o name -f $DEMO_HOME/install/kube/catalog-source/${SOURCE_FILE})
-      CATALOG_SOURCE=$(echo "${OUTPUT}" | head -n 1)
-      echo "Waiting for catalog source (${CATALOG_SOURCE}) to be ready"
-      while [[ "$(oc get ${CATALOG_SOURCE} -n openshift-marketplace -o jsonpath='{.status.connectionState.lastObservedState}' 2>/dev/null)" != "READY" ]]; do
-        echo -n "."
-        sleep 1
-      done
-    done
 
     declare giteaop_prj=gpte-operators
     echo "Installing gitea operator in ${giteaop_prj}"
@@ -223,11 +218,10 @@ metadata:
   name: openshift-pipelines-operator-rh
   namespace: openshift-operators
 spec:
-  # NOTE: Only preview will work on ocp-4.6
-  channel: preview
+  channel: stable
   installPlanApproval: Automatic
   name: openshift-pipelines-operator-rh
-  source: redhat-operators-45
+  source: redhat-operators
   sourceNamespace: openshift-marketplace
 EOF
 
@@ -309,7 +303,7 @@ spec:
 EOF
 
     echo "Waiting for virtualization support to finish installation"
-    oc wait --for=condition=Available hyperconvergeds/kubevirt-hyperconverged --timeout=6m -n openshift-cnv
+    oc wait --for=condition=Available hyperconvergeds/kubevirt-hyperconverged --timeout=10m -n openshift-cnv
 
     # Ensure pipelines is installed
     wait_for_crd "crd/pipelines.tekton.dev"
