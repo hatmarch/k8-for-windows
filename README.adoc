@@ -81,7 +81,7 @@ INFO Login to the console with user: "kubeadmin", and password: "n4e4y-Zhq3k-MyB
 ----
 ADMIN_USER=<pick username>
 ADMIN_PASSWORD=<pick password>
-$DEMO_HOME/create-admin-user.sh $ADMIN_USER "$ADMIN_PASSWORD"
+$DEMO_HOME/scripts/create-admin-user.sh $ADMIN_USER "$ADMIN_PASSWORD"
 ----
 . If this complete successfully, when challenged to log into the cluser you should now be presented with two options for login:
 +
