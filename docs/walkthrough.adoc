@@ -432,6 +432,12 @@ curl -v $KN_ROUTE/api/Images/Category/active-wear-men
 
 . Switch to the OpenShift: Gitea Tab
 . Open the Nginx config file at: `nginx/gateway-conf/nginx.conf`
++
+----
+GITEA_URL=$(oc get route gitea -n k8-win-support -o jsonpath='{.spec.host}')
+echo "https://${GITEA_URL}/gogs/k8-win-demo-support/src/branch/master/nginx/gateway-conf/nginx.conf"
+----
++
 . Highlight the following areas:
 +
 image:nginx-config.png[]
