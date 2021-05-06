@@ -31,8 +31,9 @@ spec:
 
           set -Eeuxo pipefail
 
-          #OUTPUT = $(oc exec svc/$(params.GITEA_SVC) -- /home/gitea/gitea -w /home/gitea/ -c /home/gitea/conf/app.ini admin create-user --username $(params.GOGS_USER) --password $(params.GOGS_PASSWORD) --email gogs@gogs.com --access-token)
-          oc exec svc/$(params.GITEA_SVC) -- /home/gitea/gitea -w /home/gitea/ -c /home/gitea/conf/app.ini admin create-user --username $(params.GOGS_USER) --password gogs --email $(params.GOGS_USER)@gogs.com \
+          #OUTPUT = $(oc exec svc/$(params.GITEA_SVC) -- /home/gitea/gitea -w /home/gitea/ -c /home/gitea/conf/app.ini admin user create --username $(params.GOGS_USER) --password $(params.GOGS_PASSWORD) --email gogs@gogs.com --access-token)
+          # Use --admin to make the created gitea user an admin
+          oc exec svc/$(params.GITEA_SVC) -- /home/gitea/gitea -w /home/gitea/ -c /home/gitea/conf/app.ini admin user create --username $(params.GOGS_USER) --password gogs --email $(params.GOGS_USER)@gogs.com \
             --must-change-password=false --access-token
           # TOKEN = $(grep "Access token" ${OUTPUT} | sed "s#Access token was successfully created... \(.*\)$#\1#")
 
