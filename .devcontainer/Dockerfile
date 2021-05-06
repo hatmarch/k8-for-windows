@@ -1,4 +1,4 @@
-FROM quay.io/mhildenb/win-demo-base:latest
+FROM quay.io/mhildenb/win-demo-base:latest as podmandevcontainer
 
 USER root
 
@@ -24,3 +24,8 @@ USER default
 # this is done in the base image already (to support the demo shell images too), but for those that make
 # local changes to .zshrc they should not have to rebuild the base
 COPY base-image-assets/.zshrc.example $HOME/.zshrc
+
+USER root
+
+FROM podmandevcontainer as devcontainer
+USER default
