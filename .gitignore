@@ -30,4 +30,4 @@ docker-secrets/
 .m2
 
 pull-secret.txt
-installer-workspace/
+installer-workspace*/
