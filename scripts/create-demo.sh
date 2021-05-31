@@ -136,7 +136,7 @@ main() {
 
  
     echo "Installing Tekton Tasks"
-    oc apply -R -f install/kube/tekton/tasks/ -n $sup_prj
+    oc apply -R -f ${DEMO_HOME}/install/kube/tekton/tasks/ -n $sup_prj
 
      # There can be a race when the system is installing the pipeline operator in the $vm_prj
     echo -n "Waiting for Pipelines Operator to be installed in $sup_prj..."
