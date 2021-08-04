@@ -22,13 +22,19 @@ If you don't have ready access to a windows capable cluster, you can create your
 These instructions make the assumption that your installation is running in Azure
 
 The instructions also assume that you have done the following pre-requisites prior to this:
+
 . Configured your azurecli on your host machine (with credentials in `~/.azure`)
+** If not, see link:https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest[these instructions^]
+** NOTE: If you are using link:https://code.visualstudio.com/docs/remote/containers[VS Code Remote Development (Containers)^] or any of the shell containers outlined in this README then you will have the Azure CLI already installed; you will just need to setup account credentials
 . Updated your azure account so that it can spin up relatively beefy VMs (such as `Standard_D8s_v3`)
-. Registered a domain in azure that the cluster can use
-. Have a `pull-secret` that you obtained from the link:try.openshift.com[openshift installer web site].
+** If not, see instructions about creating an OpenShift capable Azure Subscription <<Setting up an Azure Account for OpenShift,here>>
+. Registered a dns domain in azure that the cluster can use
+** If not, see link:https://docs.openshift.com/container-platform/4.6/installing/installing_azure/installing-azure-account.html#installation-azure-network-config_installing-azure-account[these instructions^] from the official OpenShift 4.6 documentation
+. Have a `pull-secret` that you obtained from the link:try.openshift.com[openshift installer web site^].
+
 ====
 
-Steps to create an [red]#OpenShift 4.6 cluster# in Azure that can support windows nodes and virtualization:
+Here are the steps to create an [red]#OpenShift 4.6 cluster# in Azure that can support windows nodes and virtualization:
 
 . Clone this demo repository (where this README.adoc resides) 
 . Navigate to the root of the cloned repo.
@@ -46,6 +52,17 @@ docker run -u root -it -v ~/.azure:/opt/app-root/.azure -v ~/.ssh:/opt/app-root/
 +
 . Create and customize cluster installation by running the following command:
 +
+[NOTE]
+====
+The script should create all the customizations you need after you answer the prompts as outlined below.  
+
+However, should the script fail or should you need more information:
+
+* *About creating an OpenShift cluster in Azure with network customizations:* see link:https://docs.openshift.com/container-platform/4.6/installing/installing_azure/installing-azure-network-customizations.html[this information^] of the official OpenShift documentation 
+* *About the OpenShift Cluster Network Operator:* link:https://github.com/openshift/cluster-network-operator#configuring-ovnkubernetes-on-a-hybrid-cluster[this information^] on configuring the Cluster Network Operator for OVNKubernetes on a Hybrid Cluster.
+* *About configuring the installer for Hybrid Cluster:*: See link:https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#bring-up-the-openshift-cluster-with-ovn-kubernetes[these instructions^] which specifically about setting up a cluster and OVN networking for a Hybrid Cluster and give some deeper information on the work that the underlying scripts used automate
+====
++
 ----
 $DEMO_HOME/scripts/customize-cluster.sh
 ----
@@ -57,7 +74,7 @@ $DEMO_HOME/scripts/customize-cluster.sh
 ** Base Domain: azure.openshifttc.com (this needs to be setup prior)
 ** Cluster Name: cbrwin-ocp46
 ** Pull Secret: (paste your pull secret)
-. If there were no errors, then you might want to review the files in the link:install/openshift-installer/example-manifests[example manifests] directory to what's in the link:install/openshift-installer/kustomize/installer-workspace[installer workspace] directory to ensure you're happy with the customizations
+. If there were no errors, then you might want to review the files in the link:install/openshift-installer/example-manifests[example manifests^] directory to what's in the link:install/openshift-installer/kustomize/installer-workspace[installer workspace^] directory to ensure you're happy with the customizations
 . When ready, run the following command to kickoff the creation (expect it to take about 40 minutes)
 +
 ----
@@ -95,7 +112,7 @@ image:local-user-login.png[]
 ====
 To limit the amount of incompatibility in setting up the demo, all the commands that are listed are expected to be run in an appropriately setup container.  You will find this as part of the instructions below and it's important not to skip this step
 
-This demo also supports the link:https://code.visualstudio.com/docs/remote/containers[VS Code Remote Development (Containers)] as can be seen in the .devcontainer directory.  If you use the terminal in VSCode and run this repo in a container, then you don't need to follow the commands to run docker in the shell as your terminal will already be running in a container that has all the necessary runtime components
+This demo also supports the link:https://code.visualstudio.com/docs/remote/containers[VS Code Remote Development (Containers)^] as can be seen in the .devcontainer directory.  If you use the terminal in VSCode and run this repo in a container, then you don't need to follow the commands to run docker in the shell as your terminal will already be running in a container that has all the necessary runtime components
 ====
 
 . Fork or clone this repo onto your local machine (see <<Cloning This Repo,above>>)
@@ -119,7 +136,7 @@ Clusters created with RHPDS (or AWS Clusters) need special consideration to allo
 
 The only way to get run an OpenShift Virtualization VM on an AWS cluster is to add a node to the cluster that is part of the "metal" series of instances for AWS.  Otherwise the VM will remain in the `pending` state due to it being "unschedulable" (no nodes with kvm virtualization support) 
 
-At the time of this writing, the cheapest metal instance the the MachineAPI supports is the `c5.metal` instance.  Here are the instances that are known to support virtualizationfootnote:[You can find a list of instances and costs link:https://aws.amazon.com/ec2/pricing/on-demand/[here].  Be sure to select the correct region when consulting that table.  Metal instances are not called out separately; find them by search for "metal" in the page]
+At the time of this writing, the cheapest metal instance the the MachineAPI supports is the `c5.metal` instance.  Here are the instances that are known to support virtualizationfootnote:[You can find a list of instances and costs link:https://aws.amazon.com/ec2/pricing/on-demand/[here^].  Be sure to select the correct region when consulting that table.  Metal instances are not called out separately; find them by search for "metal" in the page]
 
 |===
 |Instance Type |Hourly Rate (ap-southeast-1)
@@ -147,7 +164,39 @@ oc apply -f $DEMO_HOME/install/openshift-installer/kustomize/99-openshift-machin
 
 == Appendix ==
 
-=== Creating a new shell container
+=== Setting up an Azure Account for OpenShift
+
+. Make sure you can cover the costs (a modest "deallocated" cluster costs about $70 AUD/day, mostly from storage costs)
+** see also <<Controlling Azure Costs,Controlling Azure Costs>>
+. Execute the steps in the following sections of link:https://unremarqued.wordpress.com/2020/02/17/setup-azure-red-hat-openshift-walkthrough/[my blog post on the matter^]: 
+** Azure Account Creation
+** Subscription Association
+** A Little Help from Your Friends (at Microsoft)
+** Environment Setup
+. Make sure your Azure account has the link:https://docs.openshift.com/container-platform/4.6/installing/installing_azure/installing-azure-account.html#installation-azure-permissions_installing-azure-account[required Azure roles^]
+. Create a "service principal" per the link:https://docs.openshift.com/container-platform/4.6/installing/installing_azure/installing-azure-account.html#installation-azure-service-principal_installing-azure-account[official OpenShift documentation^]
+** Some of the outputs of this process are required by the Azure openshift-installer
+
+[TIP]
+====
+If the above steps don't work for you, you can find the official documentation on Configuring an Azure Account for OpenShift 4.6 link:https://docs.openshift.com/container-platform/4.6/installing/installing_azure/installing-azure-account.html[here^] in the official OpenShift documentation
+====
+
+=== Controlling Azure Costs
+
+You can save a significant amount of money by shutting down cluster nodes when not in use.  
+
+[WARNING]
+====
+In Azure, stopping nodes does not come with significant cost savings (as you might be used to with AWS).  In Azure, you must "deallocate" instances to keep them from being billed hourly.  "Deallocating" is not terminating the instances so you can just restart a deallocated instance.
+====
+
+To aid in bringing your Azure Cluster up and down the following scripts are included: 
+
+* link:scripts/azure-cluster-down.sh[`azure-cluster-down.sh`^]: Provide the `ResourceGroup` your instance lives in (created by the installer) and all nodes will be deallocated
+* link:scripts/azure-cluster-up.sh[`azure-cluster-up.sh`^]: Provide the `ResourceGroup` your instance lives in (created by the installer) and all nodes will be started
+
+=== Creating a new shell container image
 
 As the underlying devcontainer is updated to include new versions of supporting tools, you may need to create new versions of the containers used to run the demo from a shell.  You can create a new shell easily.
 
@@ -175,13 +224,6 @@ ACCOUNT=mhildenb
 +
 . When the command is done, you will be able to access the following container for use: `${REGISTRY}/${ACCOUNT}/win-demo-shell:latest`
 
-
-=== Additional Info about Cluster Creation with openshift-install ===
-
-See also instructons link:https://docs.openshift.com/container-platform/4.5/installing/installing_azure/installing-azure-network-customizations.html[here] and link:https://github.com/openshift/cluster-network-operator#configuring-ovnkubernetes-on-a-hybrid-cluster[here]
-
-link:https://github.com/openshift/windows-machine-config-bootstrapper/blob/release-4.6/tools/ansible/docs/ocp-4-4-with-windows-server.md#bring-up-the-openshift-cluster-with-ovn-kubernetes[these instructions] are specifically about setting up a cluster and OVN networking for a Hybrid Cluster and give some deeper information on the work that the underlying scripts used automate
-
 === Running a SQL Server container locally ===
 
 For certain use cases (such as running the windows container locally as in the walkthrough) you will need access to a SQL Server database.  Here's how you can run a database that is compatible with the connection strings in the walkthrough:
@@ -189,6 +231,10 @@ For certain use cases (such as running the windows container locally as in the w
 ----
 docker run --rm --name SQLServer -e 'ACCEPT_EULA=Y' -e 'SA_PASSWORD=yourStrong(!)Password' -p 1433:1433 microsoft/mssql-server-linux
 ----
+
+=== General information about running Windows VMs in OpenShift
+
+See link:https://developers.redhat.com/blog/2021/04/29/containerize-net-for-red-hat-openshift-use-a-windows-vm-like-a-container[this article] from Red Hat Developer that discusses some containerization considerations
 
 === Connecting to a Windows VM via RDP ===
 
