@@ -71,26 +71,6 @@ aws-down() {
         $(aws ec2 describe-instances --region ${AWS_REGION} --query 'Reservations[*].Instances[*].{Instance:InstanceId}' --output text --filters "Name=tag-key,Values=kubernetes.io/cluster/${CLUSTER_NAME}-*" "Name=instance-state-name,Values=running") 
 }
 
-azure-up() {
-    local RESOURCE_GROUP=${1:-${AZ_RESOURCE_GROUP}}
-    if [[ -z "$RESOURCE_GROUP" ]]; then
-        echo "Must provide a resource group as a parameter or in environment variable `AZ_RESOURCE_GROUP`"
-        return 1
-    fi 
-
-    az vm start --ids $(az vm list -g ${RESOURCE_GROUP} --query "[].id" -o tsv)
-}
-
-azure-down() {
-    local RESOURCE_GROUP=${1:-${AZ_RESOURCE_GROUP}}
-    if [[ -z "$RESOURCE_GROUP" ]]; then
-        echo "Must provide a resource group as a parameter or in environment variable `AZ_RESOURCE_GROUP`"
-        return 1
-    fi 
-
-    az vm deallocate --ids $(az vm list -g ${RESOURCE_GROUP} --query "[].id" -o tsv)
-}
-
 if [[ -f $DEMO_HOME/install/openshift-installer/kustomize/installer-workspace/auth/kubeconfig ]]; then
     echo "Found kubeconfig for created cluster.  Setting KUBECONFIG to point to it"
     export KUBECONFIG=$DEMO_HOME/install/openshift-installer/kustomize/installer-workspace/auth/kubeconfig
